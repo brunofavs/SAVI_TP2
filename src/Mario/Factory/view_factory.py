@@ -28,7 +28,7 @@ def main():
     # Initialization
     # --------------------------------------
 
-    filename = "./Factory/factory.ply"
+    filename = "factory.ply"
     print('Loading file '+ filename)
     ptCloud = o3d.io.read_point_cloud(filename)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# View Point Cloud WITH .pcd format
+# View original scene
 # Mário Vasconcelos 2023
 
 import open3d as o3d
