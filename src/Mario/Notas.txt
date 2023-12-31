@@ -4,3 +4,6 @@
 . https://paulbourke.net/dataformats/ply/
 .OPEN3d não supporta as "diffused colors" tal como é utlizado nos ply's do dataset.
 .A solução passa por converter o ply para pcd.
+
+## To do:
+.Adicionar Dependencias (ply to pcd)
