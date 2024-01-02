@@ -32,9 +32,8 @@ def main():
     # Initialization
     # --------------------------------------
 
-    dataset_path = '/home/mario/Desktop/SAVI/Dataset/scenes/pcd/'
-    scenes_path = glob.glob(dataset_path + '*.pcd')
-    
+    dataset_path = '../../dataset'
+    scenes_path = glob.glob(dataset_path + '/rgbd_scenes_v2/pcd/*.pcd')
     # Print available scenes
     available_scenes = []
     for scenes in scenes_path:
@@ -47,7 +46,7 @@ def main():
     scene_n = input("Scene number: ")
 
 
-    filename = dataset_path + scene_n+".pcd"
+    filename = dataset_path + '/rgbd_scenes_v2/pcd/' + scene_n + ".pcd"
     print('Loading file '+ filename)
     ptCloud = o3d.io.read_point_cloud(filename)
 

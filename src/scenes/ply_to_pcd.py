@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# Convert dataset ply files to pcd
-# Mário Vasconcelos 2023
+# Convert dataset ply to pcd files
 
 import open3d as o3d
 import glob
@@ -13,7 +12,7 @@ def main():
     # Initialization
     # --------------------------------------
 
-    dataset_path = '/home/mario/Desktop/SAVI/Dataset/scenes'
+    dataset_path = './dataset'
     
     ply_path = glob.glob(dataset_path + '/*.ply')
     print('Starting convertion on path: ' + dataset_path)
