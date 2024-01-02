@@ -47,6 +47,7 @@ def main():
     # scene_n = input("Scene number: ")
     scene_n = "01"
 
+    print('--------- Scene Properties --------- ')
     filename = dataset_path + 'scenes/pcd/'+ scene_n + ".pcd"
     print('Loading file '+ filename)
     ptCloud = o3d.io.read_point_cloud(filename)
@@ -57,29 +58,55 @@ def main():
     # --------------------------------------
     # bowl=1, cap=2, cereal_box=3, coffee_mug=4, coffee_table=5 
     # office_chair=6, soda_can=7, sofa=8, table=9, background=10
+    object_n = "4"
 
     # Open and read labels file
     f = open(dataset_path + 'scenes/'+ scene_n + ".label",'r')
     labels = f.read().splitlines()
     labels.pop(0) # Remove first item of label list
     
+    # Calculate index of labeled object
     ptcloud_ori = np.asarray(ptCloud.points)
     inliers_idx = []
     outliers_idx = []
     for idx in range(len(ptcloud_ori)):
-        if labels[idx] == '8':
+        if labels[idx] == object_n:
             inliers_idx.append(idx)
         else:
             outliers_idx.append(idx)
 
-    print("Inliers points: " + str(len(inliers_idx)))   
-    inlier_cloud = ptCloud.select_by_index(inliers_idx)
+    print('--------- Object Properties --------- ')
+    print("Object points: " + str(len(inliers_idx)))   
+    object_cloud = ptCloud.select_by_index(inliers_idx)
+
+    # --------------------------------------
+    # Calculate Object Cloud properties
+    # --------------------------------------
+    
+    # Average Color
+    cloud_colors = np.asarray(object_cloud.colors)
+    average_color  = np.mean(cloud_colors, axis=0)
+    print('Average Color: ' + str(average_color))
+
+    # Dimensions
+    min_bound = object_cloud.get_min_bound()
+    max_bound = object_cloud.get_max_bound()
+    dimensions = max_bound - min_bound
+    print('Dimentions:'+ str(dimensions))
+
+    # Bounding Box
+    axis_aligned_bounding_box = object_cloud.get_axis_aligned_bounding_box()
+    axis_aligned_bounding_box.color = (1.0,0,0)
+
+    oriented_bounding_box = object_cloud.get_oriented_bounding_box()
+    oriented_bounding_box.color = (0,1,0)
 
     # --------------------------------------
     # Visualizations
     # --------------------------------------
-    entities = [ptCloud]
-    o3d.visualization.draw_geometries(entities,
+    entities = [ptCloud, axis_aligned_bounding_box]
+    # entities = [object_cloud]
+    o3d.visualization.draw_geometries(entities, 
                                       zoom=view['trajectory'][0]['zoom'],
                                       front=view['trajectory'][0]['front'],
                                       lookat=view['trajectory'][0]['lookat'],
