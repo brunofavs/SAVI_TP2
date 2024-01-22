@@ -60,7 +60,7 @@ def main():
     object_n = "4"
 
     # Open and read labels file
-    f = open(dataset_path + '/rgbd_scenes_v2/'+ scene_n + ".label",'r')
+    f = open(dataset_path + '/rgbd_scenes_v2scenes/'+ scene_n + ".label",'r')
     labels = f.read().splitlines()
     labels.pop(0) # Remove first item of label list
     

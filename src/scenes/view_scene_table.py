@@ -75,7 +75,7 @@ def main():
 
     # User input scene select
     # scene_n = input("Scene number: ")
-    scene_n = "07"
+    scene_n = "05"
 
     print('--------- Scene Properties --------- ')
     filename = dataset_path + '/rgbd_scenes_v2/pcd/'+ scene_n + ".pcd"
@@ -97,6 +97,7 @@ def main():
     minimum_number_points = 25
     colormap = cm.Pastel1(list(range(0,number_of_planes)))
 
+    print('--------- Finding planes --------- ')
     ptcloud = deepcopy(ptCloud_downsampled)
     planes = []
     while True: 
@@ -120,8 +121,10 @@ def main():
             print('Number of remaining points < ' + str(minimum_number_points))
             break
 
-    # Table plane detector
-    # (This method uses the average height of the plane)
+    # ------------------------------------------
+    # Table plane detector (This method uses the average height of the plane)
+    # ------------------------------------------
+    print('--------- Table plane find --------- ')
     table_plane = None
     table_plane_mean_y = 1000
     for plane_idx, plane in enumerate(planes):
@@ -135,7 +138,10 @@ def main():
 
     table_plane.colorizeInliers(r=1, g=0, b=0) # Force plane table to be red
 
-    # # Cluster extraction
+    # ------------------------------------------
+    # Cluster extraction
+    # ------------------------------------------
+
     # cluster_idxs = list(table_plane.inlier_cloud.cluster_dbscan(eps=0.15, min_points=25, print_progress=True))
 
     # # print(cluster_idxs)
@@ -159,15 +165,41 @@ def main():
     # table_cloud = table_plane.inlier_cloud.select_by_index(largest_idxs)
     # table_cloud.paint_uniform_color([0,1,0]) # paints the table green
 
+    # ------------------------------------------
+    # Plane Crop
+    # ------------------------------------------
+        
+    # Create frame on the center of table plane
+    table_plane_center_xyz = table_plane.inlier_cloud.get_center()
+
+    T1 = np.identity(4)
+    T1[0,3] = table_plane_center_xyz[0]
+    T1[1,3] = table_plane_center_xyz[1]
+    T1[2,3] = table_plane_center_xyz[2]
+
+    frame_plane = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
+    frame_plane = frame_plane.transform(T1)
+
+    # plane_ori_bounding_box = table_plane.inlier_cloud.get_axis_aligned_bounding_box()
+    # plane_ori_bounding_box.color = (1.0,0,0)
+
+    plane_ori_bounding_box = table_plane.inlier_cloud.get_oriented_bounding_box()
+    plane_ori_bounding_box.color = (0,1,0)
+    
+    plane_bb = np.asarray(plane_ori_bounding_box.get_box_points())
+
+
 
     # --------------------------------------
     # Visualizations
     # --------------------------------------
     entities = [ptCloud_downsampled]
-    entities.append(table_plane.inlier_cloud)
+    # entities.append(table_plane.inlier_cloud)
     # entities.append(table_cloud)
-    # entities.append(planes[0].inlier_cloud)
-    # entities.append(planes[1].inlier_cloud)
+    entities.append(planes[0].inlier_cloud)
+    entities.append(planes[1].inlier_cloud)
+    entities.append(frame_plane)
+    entities.append(plane_ori_bounding_box)
 
     # entities = [object_cloud]
     o3d.visualization.draw_geometries(entities, 
