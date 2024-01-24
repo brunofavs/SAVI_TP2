@@ -2,12 +2,14 @@
 To do:
 ## ----------------------------------------------------- ##
 
+.Alinhamento da Pose
+.
+
 Geral:
 .Adicionar Dependencias no readme (ply to pcd)
 
 Objetivo 2 (Pre processamento):
 .Fazer outras propriedades revelantes dos objetos;
-.O calculo das normais é inutil visto que não existe referência.
 
 
 

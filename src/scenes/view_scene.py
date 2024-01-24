@@ -43,6 +43,7 @@ def main():
     print(available_scenes)
 
     # User input scene select
+    print("File format XX.pcd")
     scene_n = input("Scene number: ")
 
 
