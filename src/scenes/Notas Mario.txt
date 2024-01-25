@@ -2,25 +2,15 @@
 To do:
 ## ----------------------------------------------------- ##
 
-.Alinhamento da Pose
-.
-
-Geral:
-.Adicionar Dependencias no readme (ply to pcd)
-
-Objetivo 2 (Pre processamento):
-.Fazer outras propriedades revelantes dos objetos;
-
-
+Rede de treino:
+.Split Dataset (80% treino /20% teste) e guardar em JSON (Issue 9: o prof diz 70/20/10% )
 
 
 
 ## ----------------------------------------------------- ##
-PLY Format
-## ----------------------------------------------------- ##
+Rede de treino:
 
-. https://paulbourke.net/dataformats/ply/
-.OPEN3d não supporta as "diffused colors" tal como é utlizado nos ply's do dataset.
-.A solução passa por converter o ply para pcd.
+Treino: Imagens dos objetos com varios ângulos ("Cropped RGB and depth images with object segmentation masks" - RGBD Dataset);
+Input da rede: Imagem da cena com transformação (pose) associada;
 
 
