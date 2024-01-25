@@ -10,7 +10,7 @@ Rede de treino:
 ## ----------------------------------------------------- ##
 Rede de treino:
 
-Treino: Imagens dos objetos com varios ângulos ("Cropped RGB and depth images with object segmentation masks" - RGBD Dataset);
-Input da rede: Imagem da cena com transformação (pose) associada;
-
+Treino, Validação: Imagens dos objetos com varios ângulos ("Cropped RGB and depth images with object segmentation masks" - RGBD Dataset);
+Input da rede: Imagem da cena com transformação (pose) associada (Utiliazar apenas a imagem 1 de "rgbd-scenes-v2_imgs.zip - RGBD Dataset");
+Output: Classificação e localização dos objetos?
 
