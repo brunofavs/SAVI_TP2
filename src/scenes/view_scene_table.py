@@ -5,9 +5,7 @@ import open3d as o3d
 import numpy as np
 import glob
 from copy import deepcopy
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from more_itertools import locate
+import math
 
 view = {
 	"class_name" : "ViewTrajectory",
@@ -37,7 +35,7 @@ class PlaneDetection():
     def colorizeInliers(self, r,g,b):
         self.inlier_cloud.paint_uniform_color([r,g,b]) # paints the plane in red
 
-    def segment(self, distance_threshold=0.04, ransac_n=3, num_iterations=100):
+    def segment(self, distance_threshold=0.03, ransac_n=4, num_iterations=200):
 
         print('Starting plane detection')
         plane_model, inlier_idxs = self.point_cloud.segment_plane(distance_threshold=distance_threshold, 
@@ -75,7 +73,7 @@ def main():
 
     # User input scene select
     # scene_n = input("Scene number: ")
-    scene_n = "05"
+    scene_n = "04"
 
     print('--------- Scene Properties --------- ')
     filename = dataset_path + '/rgbd_scenes_v2/pcd/'+ scene_n + ".pcd"
@@ -84,122 +82,71 @@ def main():
     print(ptCloud_ori)
 
     # Downsample scene
-    ptCloud_downsampled = ptCloud_ori.voxel_down_sample(voxel_size=0.01) 
-    print('After downsampling: ' + str(len(ptCloud_downsampled.points)) + ' points')
+    ptCloud_ori_downsampled = ptCloud_ori.voxel_down_sample(voxel_size=0.05) 
+    print('After downsampling: ' + str(len(ptCloud_ori_downsampled.points)) + ' points')
 
-
-    # ------------------------------------------
-    # Execution
-    # ------------------------------------------
-
-    # Plane detection parameters
-    number_of_planes = 2 # Number of planes to detect
-    minimum_number_points = 25
-    colormap = cm.Pastel1(list(range(0,number_of_planes)))
-
-    print('--------- Finding planes --------- ')
-    ptcloud = deepcopy(ptCloud_downsampled)
-    planes = []
-    while True: 
-
-        # Create point cloud with plane outliers for next itteration
-        plane = PlaneDetection(ptcloud) # New plane instance
-        ptcloud = plane.segment()       # New point cloud with outliers
-        print(plane)
-
-        # Pick Plane color
-        idx_color = len(planes)
-        color = colormap[idx_color, 0:3]
-        plane.colorizeInliers(r=color[0], g=color[1], b=color[2])
-        planes.append(plane)
-
-        # Stop while loop when:
-        if len(planes) >= number_of_planes: # stop detection planes
-            print('Detected planes >= ' + str(number_of_planes))
-            break
-        elif len(ptcloud.points) < minimum_number_points:
-            print('Number of remaining points < ' + str(minimum_number_points))
-            break
-
-    # ------------------------------------------
-    # Table plane detector (This method uses the average height of the plane)
-    # ------------------------------------------
-    print('--------- Table plane find --------- ')
-    table_plane = None
-    table_plane_mean_y = 1000
-    for plane_idx, plane in enumerate(planes):
-        center = plane.inlier_cloud.get_center()
-        print('Cloud ' + str(plane_idx) + ' has center ' + str(center))
-        mean_y = center[1]
-
-        if mean_y < table_plane_mean_y:
-            table_plane = plane
-            table_plane_mean_y = mean_y
-
-    table_plane.colorizeInliers(r=1, g=0, b=0) # Force plane table to be red
-
-    # ------------------------------------------
-    # Cluster extraction
-    # ------------------------------------------
-
-    # cluster_idxs = list(table_plane.inlier_cloud.cluster_dbscan(eps=0.15, min_points=25, print_progress=True))
-
-    # # print(cluster_idxs)
-    # # print(type(cluster_idxs))
-
-    # # -1 means noise
-    # possible_values = list(set(cluster_idxs))
-    # if -1 in possible_values:
-    #     possible_values.remove(-1)
-    # print(possible_values)
-
-    # largest_cluster_num_points = 0
-    # largest_cluster_idx = None
-    # for value in possible_values:
-    #     num_points = cluster_idxs.count(value)
-    #     if num_points > largest_cluster_num_points:
-    #         largest_cluster_idx = value
-    #         largest_cluster_num_points = num_points
-
-    # largest_idxs = list(locate(cluster_idxs, lambda x: x == largest_cluster_idx))
-    # table_cloud = table_plane.inlier_cloud.select_by_index(largest_idxs)
-    # table_cloud.paint_uniform_color([0,1,0]) # paints the table green
-
-    # ------------------------------------------
-    # Plane Crop
-    # ------------------------------------------
-        
-    # Create frame on the center of table plane
-    table_plane_center_xyz = table_plane.inlier_cloud.get_center()
-
-    T1 = np.identity(4)
-    T1[0,3] = table_plane_center_xyz[0]
-    T1[1,3] = table_plane_center_xyz[1]
-    T1[2,3] = table_plane_center_xyz[2]
-
+    # Generate carteesian frame object
     frame_plane = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
-    frame_plane = frame_plane.transform(T1)
 
-    # plane_ori_bounding_box = table_plane.inlier_cloud.get_axis_aligned_bounding_box()
-    # plane_ori_bounding_box.color = (1.0,0,0)
 
-    plane_ori_bounding_box = table_plane.inlier_cloud.get_oriented_bounding_box()
-    plane_ori_bounding_box.color = (0,1,0)
-    
-    plane_bb = np.asarray(plane_ori_bounding_box.get_box_points())
+    # ------------------------------------------
+    # Estimte normals and remove non horizontal planes
+    # ------------------------------------------
 
+    ptCloud_ori.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.05, max_nn=30))
+    ptCloud_ori.orient_normals_to_align_with_direction(orientation_reference=np.array([0, 0, 1]))
+
+
+    # Select voxels idx that are 90º degrees with X Camera Axis
+    hori_idxs = []
+    for idx,normal in enumerate(ptCloud_ori.normals):
+
+        # Compute angle between two 3d vectors
+        norm_normal = math.sqrt(normal[0]**2 + normal[1]**2 + normal[2]**2)
+
+        comp_axis = [1, 0, 0] # Compare with X axis
+        norm_comp_axis = math.sqrt(comp_axis[0]**2 + comp_axis[1]**2 + comp_axis[2]**2)
+
+        theta = math.acos(np.dot(normal, comp_axis) / (norm_normal * norm_comp_axis)) * 180/math.pi
+
+        # Keep points where angle to z_axis is small enough
+        if abs(theta - 90) < 0.05:  # we have a point that belongs to an horizontal surface
+            hori_idxs.append(idx)
+
+    # Create new point cloud
+    ptCloud_ori_horizontal = ptCloud_ori.select_by_index(hori_idxs)
+    print("Horizontal: " + str(len(hori_idxs)))
+
+
+    # ------------------------------------------
+    # Remove Outliers
+    # ------------------------------------------
+    (ptCloud_ori_horizontal_clean, ind) = ptCloud_ori_horizontal.remove_radius_outlier(nb_points=300, radius=0.3)
+
+    # ------------------------------------------
+    # Find table plane
+    # ------------------------------------------
+    table = PlaneDetection(ptCloud_ori_horizontal_clean)
+    ptCloud_table = table.segment()
+    ptCloud_table_center = ptCloud_table.get_center()
+    # ------------------------------------------
+    # Create transformation matrix
+    # ------------------------------------------
+    ptCloud_ori_downsampled.translate((-ptCloud_table_center[0],-ptCloud_table_center[1],-ptCloud_table_center[2]))
+
+    # ptCloud_ori.transform() DOWNSAMPLED!!
 
 
     # --------------------------------------
     # Visualizations
     # --------------------------------------
-    entities = [ptCloud_downsampled]
+    entities = [ptCloud_ori_horizontal_clean]
     # entities.append(table_plane.inlier_cloud)
     # entities.append(table_cloud)
-    entities.append(planes[0].inlier_cloud)
-    entities.append(planes[1].inlier_cloud)
+    # entities.append(planes[0].inlier_cloud)
+    # entities.append(planes[1].inlier_cloud)
     entities.append(frame_plane)
-    entities.append(plane_ori_bounding_box)
+    # entities.append(plane_ori_bounding_box)
 
     # entities = [object_cloud]
     o3d.visualization.draw_geometries(entities, 

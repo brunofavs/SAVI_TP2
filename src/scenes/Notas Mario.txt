@@ -2,15 +2,35 @@
 To do:
 ## ----------------------------------------------------- ##
 
-Rede de treino:
-.Split Dataset (80% treino /20% teste) e guardar em JSON (Issue 9: o prof diz 70/20/10% )
 
+## ----------------------------------------------------- ##
+Pre-Processamento
+## ----------------------------------------------------- ##
+1. Lêr uma imagem RGBD;
+2. Converter para núvem de pontos;
+3. Encontrar a mesa e os respetivos obejtos em cima dela;
+4. Gerar uma imagem RGB dos objetos e dá-la à rede para classificar;
+5. Medir as propriedades do objeto; 
 
 
 ## ----------------------------------------------------- ##
 Rede de treino:
+## ----------------------------------------------------- ##
 
-Treino, Validação: Imagens dos objetos com varios ângulos ("Cropped RGB and depth images with object segmentation masks" - RGBD Dataset);
-Input da rede: Imagem da cena com transformação (pose) associada (Utiliazar apenas a imagem 1 de "rgbd-scenes-v2_imgs.zip - RGBD Dataset");
-Output: Classificação e localização dos objetos?
+Objetivo da rede: Apenas classificar os objetos;
+Treino, Validação, teste: Imagens dos objetos com varios ângulos ("Cropped RGB and depth images with object segmentation masks" - RGBD Dataset);
+Input da rede: Imagem do objeto proveniente da núvem de pontos;
+Output: Classificação do objeto;
 
+
+
+
+
+## ----------------------------------------------------- ##
+Misc
+## ----------------------------------------------------- ##
+
+Coordenadas Cartesianas:
+    .Red   - X
+    .Green - Y
+    .Blue  - Z
