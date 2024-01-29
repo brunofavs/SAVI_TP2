@@ -45,7 +45,7 @@ class PlaneDetection():
 
         self.inlier_cloud = self.point_cloud.select_by_index(inlier_idxs)
 
-        outlier_cloud = self.point_cloud.select_by_index(inlier_idxs, invert=True)
+        outlier_cloud = self.point_cloud.select_by_index(inlier_idxs, invert=False)
 
         return outlier_cloud
 
@@ -53,7 +53,9 @@ class PlaneDetection():
         text = 'Segmented plane from pc with ' + str(len(self.point_cloud.points)) + ' with ' + str(len(self.inlier_cloud.points)) + ' inliers. '
         text += '\nPlane: ' + str(self.a) +  ' x + ' + str(self.b) + ' y + ' + str(self.c) + ' z + ' + str(self.d) + ' = 0' 
         return text
-    
+
+
+
 def main():
 
     # --------------------------------------
@@ -126,21 +128,42 @@ def main():
     # ------------------------------------------
     # Find table plane
     # ------------------------------------------
-    table = PlaneDetection(ptCloud_ori_horizontal_clean)
-    ptCloud_table = table.segment()
+    table_plane = PlaneDetection(ptCloud_ori_horizontal_clean)
+    ptCloud_table = table_plane.segment()
     ptCloud_table_center = ptCloud_table.get_center()
+
+
+
     # ------------------------------------------
     # Create transformation matrix
     # ------------------------------------------
-    ptCloud_ori_downsampled.translate((-ptCloud_table_center[0],-ptCloud_table_center[1],-ptCloud_table_center[2]))
 
-    # ptCloud_ori.transform() DOWNSAMPLED!!
+    # Translate
+    ptCloud_ori_downsampled.translate((-ptCloud_table_center[0],-ptCloud_table_center[1],-ptCloud_table_center[2]))
+    
+    # Rotate on X axis
+    rot = ptCloud_ori_downsampled.get_rotation_matrix_from_xyz((-2.1,0,0))
+    ptCloud_ori_downsampled.rotate(rot, center=(0, 0, 0,))
+
+    # Rotate on Z axis
+    rot = ptCloud_ori_downsampled.get_rotation_matrix_from_xyz((0,0,-2.1))
+    ptCloud_ori_downsampled.rotate(rot, center=(0, 0, 0,))
+
+    # Rotate on Y axis
+    rot = ptCloud_ori_downsampled.get_rotation_matrix_from_xyz((0,-0.15,0))
+    ptCloud_ori_downsampled.rotate(rot, center=(0, 0, 0,))
+
+    # ------------------------------------------
+    # Crop table from original point cloud
+    # ------------------------------------------
+    
+
 
 
     # --------------------------------------
     # Visualizations
     # --------------------------------------
-    entities = [ptCloud_ori_horizontal_clean]
+    entities = [ptCloud_ori_downsampled]
     # entities.append(table_plane.inlier_cloud)
     # entities.append(table_cloud)
     # entities.append(planes[0].inlier_cloud)
