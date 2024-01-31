@@ -6,6 +6,8 @@ import numpy as np
 import glob
 from copy import deepcopy
 import math
+from more_itertools import locate
+from matplotlib import cm
 import os
 
 view = {
@@ -15,13 +17,13 @@ view = {
 	"trajectory" : 
 	[
 		{
-			"boundingbox_max" : [ 2.7116048336029053, 1.2182252407073975, 3.8905272483825684 ],
-			"boundingbox_min" : [ -2.4257750511169434, -1.6397310495376587, -1.3339539766311646 ],
+			"boundingbox_max" : [ 2.2007945115625587, 2.4787839421737399, 0.87212006184227109 ],
+			"boundingbox_min" : [ -2.2313101784320244, -2.6726428081833662, -0.54702210346546243 ],
 			"field_of_view" : 60.0,
-			"front" : [ -0.33682983603152233, -0.40052927348606165, -0.85212790274682682 ],
-			"lookat" : [ 0.26085641706715251, 0.95360623106515774, 2.734619924963821 ],
-			"up" : [ 0.4644300399545937, -0.85793168430988997, 0.21967695155607475 ],
-			"zoom" : 0.68120000000000025
+			"front" : [ -0.5606738944746863, -0.71363930970378142, 0.41995680694578447 ],
+			"lookat" : [ 0.5847949261571288, 0.82565654802819366, -0.79184900762963084 ],
+			"up" : [ 0.2966939932942696, 0.30035633778452908, 0.90650909796635015 ],
+			"zoom" : 0.64120000000000021
 		}
 	],
 	"version_major" : 1,
@@ -54,6 +56,15 @@ class PlaneDetection():
         text = 'Segmented plane from pc with ' + str(len(self.point_cloud.points)) + ' with ' + str(len(self.inlier_cloud.points)) + ' inliers. '
         text += '\nPlane: ' + str(self.a) +  ' x + ' + str(self.b) + ' y + ' + str(self.c) + ' z + ' + str(self.d) + ' = 0' 
         return text
+
+def crop_point_cloud_with_bbox(point_cloud, crop_box):
+    # Create a bounding box using the provided crop_box
+    bounding_box = o3d.geometry.AxisAlignedBoundingBox(min_bound=crop_box[0], max_bound=crop_box[1])
+
+    # Crop the point cloud
+    cropped_point_cloud = point_cloud.crop(bounding_box)
+
+    return cropped_point_cloud
 
 def main():
 
@@ -119,58 +130,98 @@ def main():
             hori_idxs.append(idx)
 
     # Create new point cloud
-    ptCloud_ori_horizontal = ptCloud_ori.select_by_index(hori_idxs)
+    ptCloud_hori = ptCloud_ori.select_by_index(hori_idxs)
     print("Horizontal: " + str(len(hori_idxs)))
 
 
     # ------------------------------------------
     # Remove Outliers
     # ------------------------------------------
-    (ptCloud_ori_horizontal_clean, ind) = ptCloud_ori_horizontal.remove_radius_outlier(nb_points=300, radius=0.3)
-
+    (ptCloud_hori_clean, ind) = ptCloud_hori.remove_radius_outlier(nb_points=300, radius=0.3)
+    
+    
     # ------------------------------------------
     # Find table plane
     # ------------------------------------------
-    table_plane = PlaneDetection(ptCloud_ori_horizontal_clean)
+    table_plane = PlaneDetection(ptCloud_hori_clean)
     ptCloud_table = table_plane.segment()
     ptCloud_table_center = ptCloud_table.get_center()
 
 
 
     # ------------------------------------------
-    # Create transformation matrix
+    # Translate and Rotate original point cloud
     # ------------------------------------------
+    ptCloud_GUI = deepcopy(ptCloud_ori)
 
     # Translate
-    ptCloud_ori_downsampled.translate((-ptCloud_table_center[0],-ptCloud_table_center[1],-ptCloud_table_center[2]))
+    ptCloud_GUI.translate((-ptCloud_table_center[0],-ptCloud_table_center[1],-ptCloud_table_center[2]))
     
     # Rotate on X axis
-    rot = ptCloud_ori_downsampled.get_rotation_matrix_from_xyz((-2.1,0,0))
-    ptCloud_ori_downsampled.rotate(rot, center=(0, 0, 0,))
+    rot = ptCloud_GUI.get_rotation_matrix_from_xyz((-2.1,0,0))
+    ptCloud_GUI.rotate(rot, center=(0, 0, 0,))
 
     # Rotate on Z axis
-    rot = ptCloud_ori_downsampled.get_rotation_matrix_from_xyz((0,0,-2.1))
-    ptCloud_ori_downsampled.rotate(rot, center=(0, 0, 0,))
+    rot = ptCloud_GUI.get_rotation_matrix_from_xyz((0,0,-2.1))
+    ptCloud_GUI.rotate(rot, center=(0, 0, 0,))
 
     # Rotate on Y axis
-    rot = ptCloud_ori_downsampled.get_rotation_matrix_from_xyz((0,-0.15,0))
-    ptCloud_ori_downsampled.rotate(rot, center=(0, 0, 0,))
+    rot = ptCloud_GUI.get_rotation_matrix_from_xyz((0,-0.15,0))
+    ptCloud_GUI.rotate(rot, center=(0, 0, 0,))
 
     # ------------------------------------------
     # Crop table from original point cloud
     # ------------------------------------------
+
+    xmin = -0.5
+    ymin = -0.5
+    zmin = 0.05
+
+    xmax = 0.5
+    ymax = 0.5
+    zmax = 0.4
+
+    crop_box = np.array([[xmin, ymin, zmin], [xmax, ymax, zmax]])
+
+
+    # Call the function to crop the point cloud
+    ptCloud_GUI_croped = crop_point_cloud_with_bbox(ptCloud_GUI, crop_box)
+    print("After croping: " + str(len(ptCloud_GUI_croped.points)))
+
+    # ------------------------------------------
+    # Cluster objects
+    # ------------------------------------------
+    group_idxs = list(ptCloud_GUI_croped.cluster_dbscan(eps=0.045, min_points=50, print_progress=True))
+
+    
+    # Filter clusters (-1 means noise)
+    obj_idxs = list(set(group_idxs))
+    colormap = cm.Pastel1(range(0, len(obj_idxs)))
+    if -1 in obj_idxs:
+        obj_idxs.remove(-1)
+    
+    print("#Objects:  "+ str(len(group_idxs)))
     
 
+    for obj_idx in obj_idxs:
+        group_points_idxs = list(locate(group_idxs, lambda x: x == obj_idx))
 
+        ptcloud_group = ptCloud_GUI_croped.select_by_index(group_points_idxs)
+        
+        print(ptcloud_group)
+
+        
+    # group_point_clouds = []
+    # for group_idx in group_idxs:
+        # # Add color to object
+        # color = colormap[group_idx, 0:3]
+        # ptcloud_group.paint_uniform_color(color)
+        # group_point_clouds.append(ptcloud_group)
 
     # --------------------------------------
     # Visualizations
     # --------------------------------------
-    entities = [ptCloud_ori_downsampled]
-    # entities.append(table_plane.inlier_cloud)
-    # entities.append(table_cloud)
-    # entities.append(planes[0].inlier_cloud)
-    # entities.append(planes[1].inlier_cloud)
+    entities = [ptcloud_group]
     entities.append(frame_plane)
     # entities.append(plane_ori_bounding_box)
 
