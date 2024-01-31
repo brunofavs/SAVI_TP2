@@ -30,6 +30,28 @@ view = {
 	"version_minor" : 0
 }
 
+
+view = {
+	"class_name" : "ViewTrajectory",
+	"interval" : 29,
+	"is_loop" : False,
+	"trajectory" : 
+	[
+		{
+			"boundingbox_max" : [ 0.5, 0.5, 0.5 ],
+			"boundingbox_min" : [ -0.34867820089130808, -0.37054497667191461, -0.029999999999999999 ],
+			"field_of_view" : 60.0,
+			"front" : [ 0.45673827815753421, -0.68198350241761374, 0.57121681321184492 ],
+			"lookat" : [ -0.01896661811825958, 0.046179291564060657, 0.049008207407589467 ],
+			"up" : [ -0.43580189559863336, 0.38824860398903976, 0.81199737025017504 ],
+			"zoom" : 0.86120000000000041
+		}
+	],
+	"version_major" : 1,
+	"version_minor" : 0
+}
+
+
 class PlaneDetection():
     def __init__(self, point_cloud):
 
@@ -189,7 +211,7 @@ def main():
     print("After croping: " + str(len(ptCloud_GUI_croped.points)))
 
     # ------------------------------------------
-    # Cluster objects
+    # Cluster objects and save them
     # ------------------------------------------
     group_idxs = list(ptCloud_GUI_croped.cluster_dbscan(eps=0.045, min_points=50, print_progress=True))
 
@@ -200,7 +222,7 @@ def main():
     if -1 in obj_idxs:
         obj_idxs.remove(-1)
     
-    print("#Objects:  "+ str(len(group_idxs)))
+    print("#Objects:  "+ str(len(obj_idxs)))
     
 
     for obj_idx in obj_idxs:
@@ -208,7 +230,8 @@ def main():
 
         ptcloud_group = ptCloud_GUI_croped.select_by_index(group_points_idxs)
         
-        print(ptcloud_group)
+        filename = "./objs/pcd/obj"+str(obj_idx)+".pcd"
+        o3d.io.write_point_cloud(filename,ptcloud_group)
 
         
     # group_point_clouds = []
