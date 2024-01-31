@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # View labeled scene
 
+import os
 import open3d as o3d
 import numpy as np
 import glob
@@ -31,12 +32,15 @@ def main():
     # Initialization
     # --------------------------------------
 
-    dataset_path = '../../dataset'
-    scenes_path = glob.glob(dataset_path + '/rgbd_scenes_v2/pcd/*.pcd')
+    dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
+    # scenes_paths = glob.glob(dataset_path + '/rgbd_scenes_v2/pcd/*.pcd')
+
+    scenes_path = dataset_path +'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd' 
+    scenes_paths = glob.glob(scenes_path + '/*.pcd')
     
     # Print available scenes
     available_scenes = []
-    for scenes in scenes_path:
+    for scenes in scenes_paths:
         file_name = scenes.split('/')
         file_name = file_name[-1]
         available_scenes.append(file_name)
@@ -47,7 +51,8 @@ def main():
     scene_n = "01"
 
     print('--------- Scene Properties --------- ')
-    filename = dataset_path + '/rgbd_scenes_v2/pcd/'+ scene_n + ".pcd"
+    # filename = dataset_path + '/rgbd_scenes_v2/pcd/'+ scene_n + ".pcd"
+    filename = f'{scenes_path}/{scene_n}.pcd'
     print('Loading file '+ filename)
     ptCloud = o3d.io.read_point_cloud(filename)
     print(ptCloud)
@@ -60,7 +65,8 @@ def main():
     object_n = "4"
 
     # Open and read labels file
-    f = open(dataset_path + '/rgbd_scenes_v2scenes/'+ scene_n + ".label",'r')
+    # f = open(dataset_path + '/rgbd_scenes_v2scenes/'+ scene_n + ".label",'r')
+    f = open(f'{scenes_path}/../{scene_n}.label','r')
     labels = f.read().splitlines()
     labels.pop(0) # Remove first item of label list
     

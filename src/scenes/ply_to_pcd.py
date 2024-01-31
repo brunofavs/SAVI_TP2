@@ -12,7 +12,10 @@ def main():
     # Initialization
     # --------------------------------------
 
-    dataset_path = './dataset'
+    
+    # TODO fix naming
+    dataset_path = os.getenv('SAVI_TP2') + '/dataset/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc'
+    # dataset_path = os.getenv('SAVI_TP2') + '/dataset/rgbd-scenes-v2_pc/rgbd-scenes-v2/'
     
     ply_path = glob.glob(dataset_path + '/*.ply')
     print('Starting convertion on path: ' + dataset_path)
@@ -32,6 +35,8 @@ def main():
         file_name = file.split('/')
         file_name = file_name[-1]
         file_name = file_name[:-4]
+        
+        #TODO add to readme Needs sudo apt install pcl-tools
         os.system('pcl_ply2pcd ' + file + ' ' + dataset_path + '/pcd/' + file_name + '.pcd')
    
 
