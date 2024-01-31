@@ -9,27 +9,7 @@ import math
 from more_itertools import locate
 from matplotlib import cm
 import os
-
-view = {
-	"class_name" : "ViewTrajectory",
-	"interval" : 29,
-	"is_loop" : False,
-	"trajectory" : 
-	[
-		{
-			"boundingbox_max" : [ 2.2007945115625587, 2.4787839421737399, 0.87212006184227109 ],
-			"boundingbox_min" : [ -2.2313101784320244, -2.6726428081833662, -0.54702210346546243 ],
-			"field_of_view" : 60.0,
-			"front" : [ -0.5606738944746863, -0.71363930970378142, 0.41995680694578447 ],
-			"lookat" : [ 0.5847949261571288, 0.82565654802819366, -0.79184900762963084 ],
-			"up" : [ 0.2966939932942696, 0.30035633778452908, 0.90650909796635015 ],
-			"zoom" : 0.64120000000000021
-		}
-	],
-	"version_major" : 1,
-	"version_minor" : 0
-}
-
+import cv2
 
 view = {
 	"class_name" : "ViewTrajectory",
@@ -88,12 +68,23 @@ def crop_point_cloud_with_bbox(point_cloud, crop_box):
 
     return cropped_point_cloud
 
+
+
 def main():
 
     # --------------------------------------
     # Initialization
     # --------------------------------------
+    fx = 570
+    fy = 570
+    cx = 320
+    cy = 240
+    width = 640
+    height = 480
+    K = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, cx, cy)
+    intrinsic_matrix = np.asarray([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
 
+    
     dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
     # scenes_paths = glob.glob(dataset_path + '/rgbd_scenes_v2/pcd/*.pcd')
 
@@ -126,7 +117,10 @@ def main():
     # Generate carteesian frame object
     frame_plane = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
 
-
+    # Load scene the image
+    img_path = dataset_path + '/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_04/00000-color.png'
+    scene_img = cv2.imread(img_path) # relative path
+    
     # ------------------------------------------
     # Estimte normals and remove non horizontal planes
     # ------------------------------------------
@@ -224,16 +218,46 @@ def main():
     
     print("#Objects:  "+ str(len(obj_idxs)))
     
-
+    obj_centers = []
     for obj_idx in obj_idxs:
         group_points_idxs = list(locate(group_idxs, lambda x: x == obj_idx))
 
         ptcloud_group = ptCloud_GUI_croped.select_by_index(group_points_idxs)
-        
-        filename = "./objs/pcd/obj"+str(obj_idx)+".pcd"
+
+        # Save object
+        filename = "../bin/objs/pcd/obj"+str(obj_idx)+".pcd"
         o3d.io.write_point_cloud(filename,ptcloud_group)
 
+        # Rotate on Y axis
+        rot = ptcloud_group.get_rotation_matrix_from_xyz((0,+0.15,0))
+        ptcloud_group.rotate(rot, center=(0, 0, 0,))
+
+        # Rotate on Z axis
+        rot = ptcloud_group.get_rotation_matrix_from_xyz((0,0,+2.1))
+        ptcloud_group.rotate(rot, center=(0, 0, 0,))
+
+        # Roll back reference
+        rot = ptcloud_group.get_rotation_matrix_from_xyz((+2.1,0,0))
+        ptcloud_group.rotate(rot, center=(0, 0, 0,))
+
+        # Translate
+        ptcloud_group.translate((ptCloud_table_center[0],ptCloud_table_center[1],ptCloud_table_center[2]))
+
+        # Get object center
+        center = ptcloud_group.get_center()
+        center_homo = np.asarray([center[0],center[1],center[2], 1])
+
+        # dist_coeffs = np.array([k1, k2, p1, p2, k3], dtype=np.float32)
+        img_point, _  = cv2.projectPoints(center,np.zeros((3,1)),np.zeros((3,1)),intrinsic_matrix,np.zeros((5,1)))
+        print(img_point)
+        img_point_B = img_point[0][0][:]
+        print(img_point_B[0])
+        cv2.circle(scene_img,(round(img_point_B[0]),round(img_point_B[1])),50,(0,0,255),3)
         
+     
+    cv2.imshow('scene', scene_img)
+    cv2.waitKey(0)
+
     # group_point_clouds = []
     # for group_idx in group_idxs:
         # # Add color to object
@@ -244,16 +268,17 @@ def main():
     # --------------------------------------
     # Visualizations
     # --------------------------------------
-    entities = [ptcloud_group]
-    entities.append(frame_plane)
-    # entities.append(plane_ori_bounding_box)
+    # entities = [ptcloud_group]
+    # entities.append(frame_plane)
+    # # entities.append(plane_ori_bounding_box)
 
-    # entities = [object_cloud]
-    o3d.visualization.draw_geometries(entities, 
-                                      zoom   =view['trajectory'][0]['zoom'],
-                                      front  =view['trajectory'][0]['front'],
-                                      lookat =view['trajectory'][0]['lookat'],
-                                      up     =view['trajectory'][0]['up'])
+    # # entities = [object_cloud]
+    # o3d.visualization.draw_geometries(entities, 
+    #                                   zoom   =view['trajectory'][0]['zoom'],
+    #                                   front  =view['trajectory'][0]['front'],
+    #                                   lookat =view['trajectory'][0]['lookat'],
+    #                                   up     =view['trajectory'][0]['up'])
 
 if __name__ == "__main__":
+    
     main()
