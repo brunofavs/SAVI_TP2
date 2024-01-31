@@ -3,8 +3,8 @@
 
 import open3d as o3d
 from copy import deepcopy
-
-
+import math
+import numpy as np
 view = {
 	"class_name" : "ViewTrajectory",
 	"interval" : 29,
@@ -25,43 +25,54 @@ view = {
 	"version_minor" : 0
 }
 
-
-def main():
-
-    # --------------------------------------
-    # Initialization
-    # --------------------------------------
-
-    #Open point cloud
-    filename = "./objs/pcd/obj0.pcd"
-    ptCloud_obj = o3d.io.read_point_cloud(filename)
-
-    # --------------------------------------
-    # Create Image from point cloud
-    # --------------------------------------
+def save_view_point(pcd, filename):
     vis = o3d.visualization.Visualizer()
     vis.create_window()
+    vis.add_geometry(pcd)
+    vis.run()  # user changes the view and press "q" to terminate
+    param = vis.get_view_control().convert_to_pinhole_camera_parameters()
+    o3d.io.write_pinhole_camera_parameters(filename, param)
+    vis.destroy_window()
 
+def save_rgb_depth(pcd,rx,ry,rz):
+
+    # Rotate point cloud
+    rot = pcd.get_rotation_matrix_from_xyz((math.degrees(rx),math.degrees(ry),math.degrees(rz)))
+    pcd.rotate(rot, center=(0, 0, 0,))
+
+
+    # Create new visualizer
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+    vis.add_geometry(pcd)
+
+    # Render options
     vis.get_render_option().point_color_option = o3d.visualization.PointColorOption.Color
     # vis.get_render_option().point_size = 3.0
 
-    vis.add_geometry(ptCloud_obj)
-    vis.capture_screen_image("objs/rgb/obj0.jpg", do_render=True)
-    vis.destroy_window()
+    # Save rbg and depth images
+    vis.capture_depth_image("objs/rgbd/obj0_depth.png", do_render=True)
+    vis.capture_screen_image("objs/rgbd/obj0_rgb.png", do_render=True)
+    # vis.run()
+    vis.destroy_window() 
 
-    exit(0)
-    # --------------------------------------
-    # Visualizations
-    # --------------------------------------
-    entities = []
-    entities.append(ptCloud_obj)
-
-    # entities = [object_cloud]
-    o3d.visualization.draw_geometries(entities, 
-                                      zoom   =view['trajectory'][0]['zoom'],
-                                      front  =view['trajectory'][0]['front'],
-                                      lookat =view['trajectory'][0]['lookat'],
-                                      up     =view['trajectory'][0]['up'])
+def main():
+    pass
 
 if __name__ == "__main__":
-    main()
+    
+    #Open point cloud
+    filename = "./objs/pcd/obj1.pcd"
+    ptCloud_obj = o3d.io.read_point_cloud(filename)
+    frame_plane = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
+    # save_view_point(ptCloud_obj, "./objs/viewpoint.json")
+    save_rgb_depth(ptCloud_obj,20,0,0)
+    
+    exit(0)
+    entities = []
+    entities.append(ptCloud_obj)
+    entities.append(frame_plane)
+
+    o3d.visualization.draw_geometries(entities)
+                                      
+    # main()
