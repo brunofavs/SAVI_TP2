@@ -3,6 +3,7 @@
 
 import glob
 import json
+import os
 from sklearn.model_selection import train_test_split
 
 
@@ -11,9 +12,10 @@ def main():
     # -----------------------------------------------------------------
     # Prepare Datasets
     # -----------------------------------------------------------------
-    data_path = '/home/mike/savi_datasets/dogs-vs-cats/train/'
-    image_filenames = glob.glob(data_path + '*.jpg')
-    # To test the script in good time, select only 1000 of the 25000 images
+    rgb_data_path = f'{os.getenv("SAVI_TP2")}/dataset/object_dataset/rgbd-dataset'
+    image_filenames = glob.glob(rgb_data_path + '/**/*.png',recursive=True)
+
+    image_filenames = [file for file in image_filenames if "crop" in file and "depth" not in file and "mask" not in file]
 
     # Use a rule of 70% train, 20% validation, 10% test
 
@@ -32,7 +34,9 @@ def main():
     json_object = json.dumps(d, indent=2)
 
     # Writing to sample.json
-    with open("dataset_filenames.json", "w") as outfile:
+
+    os.chdir(f'{os.getenv("SAVI_TP2")}/dataset/jsons')
+    with open("rgb_images_filenames.json", "w") as outfile:
         outfile.write(json_object)
 
 

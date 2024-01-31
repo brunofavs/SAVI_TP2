@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import json
+import os
 import torch
 from torchvision import transforms
 import matplotlib.pyplot as plt
 
-from lib.NN.dataset                     import Dataset
-from lib.NN.model_architectures.model   import Model
-from lib.NN.trainer                     import Trainer
+from lib.NN.RGB.rgb_dataset                             import Dataset
+from lib.NN.RGB.model_architectures.classes_model       import Model
+from lib.NN.RGB.rgb_trainer                             import Trainer
 
 
 def main():
@@ -32,7 +33,10 @@ def main():
     # Prepare Datasets
     # -----------------------------------------------------------------
 
-    with open('dataset_filenames.json', 'r') as f:
+    current_dir = os.getcwd()
+    os.chdir(f'{os.getenv("SAVI_TP2")}/dataset/jsons')
+
+    with open('rgb_images_filenames.json', 'r') as f:
         dataset_filenames = json.load(f)
 
     train_filenames = dataset_filenames['train_filenames']
@@ -51,6 +55,8 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=hyperparams['batch_size'], shuffle=True)
     validation_loader = torch.utils.data.DataLoader(dataset=validation_dataset, batch_size=hyperparams['batch_size'], shuffle=True)
 
+
+    return
     # -----------------------------------------------------------------
     # Train
     # -----------------------------------------------------------------

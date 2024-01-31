@@ -14,19 +14,34 @@ class Dataset(torch.utils.data.Dataset):
         self.number_of_images = len(self.filenames)
 
         # Compute the corresponding labels
-        # self.labels should be like ['cat', 'dog', 'cat'], but we will use [1, 0, 1] because of pytorch
-        self.labels = []
+        self.label_types = set()
+        self.image_idx_labels = []
+        self.label_matchings = dict()
+
         for filename in self.filenames:
             basename = os.path.basename(filename)
-            blocks = basename.split('.')
-            label = blocks[0]  # because basename is "cat.2109.jpg"
+            blocks = basename.split('_')
+            first_numerical_block = next(idx for idx,item in enumerate(blocks) if item.isnumeric())
 
-            if label == 'dog':
-                self.labels.append(0)
-            elif label == 'cat':
-                self.labels.append(1)
+            label = ''
+            for i in range(first_numerical_block):
+                label = blocks[i] if not label else f'{label}_{blocks[i]}' # because basename can have 2 words "bell_pepper_3_2_205_crop.png"
+
+
+            if label in self.label_types:
+
+                corresponding_label_idx = self.label_matchings[label]
+                self.image_idx_labels.append(corresponding_label_idx)
+                
             else:
-                raise ValueError('Unknown label ' + label)
+                self.label_types.add(label)
+                self.label_matchings[label] = len(self.label_types)
+                self.image_idx_labels.append(len(self.label_types))
+            
+        
+        print(self.label_matchings)
+        print(self.label_types)
+        print(self.image_idx_labels)
 
         self.transforms = transforms.Compose([
             transforms.Resize((224, 224)),
@@ -48,6 +63,6 @@ class Dataset(torch.utils.data.Dataset):
         tensor_image = self.transforms(pil_image)
 
         # Get corresponding label
-        label = self.labels[index]
+        label = self.image_idx_labels[index]
 
         return tensor_image, label
