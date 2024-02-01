@@ -14,7 +14,7 @@ height = 480
 intrinsic_matrix = np.asarray([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
 
 
-with open('intrinsic.json','w') as f:
+with open('./lib/jsons/intrinsic.json','w') as f:
     json.dump(intrinsic_matrix.tolist(),f)
 
 print("Information saved!")

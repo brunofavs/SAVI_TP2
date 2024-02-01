@@ -175,25 +175,17 @@ def scene_objs_centroids(datapath):
     # Find table center
     # ------------------------------------------
     ptCloudA.segment(distance_threshold=0.03, ransac_n=3, num_iterations=200, outliers = False)
-    table_center =  ptCloudA.gui.get_center()
+    table_center = ptCloudA.gui.get_center()
     print("Table center at: " + str(table_center))
+
 
     # ------------------------------------------
     # Load new Pointcloud
     # ------------------------------------------
     print('--------------------- PointCloud B --------------------- ')
     ptCloudB = PointCloudOperations()
-    ptCloudB.load(datapath)
-    # ptCloudB.gui = ptCloudA.ori
+    ptCloudB.gui = ptCloudA.ori
     ptCloudB.pre_process(voxelsize = 0.001)
-
-    # ------------------------------------------
-    # Remove Outliers
-    # ------------------------------------------
-
-    (ptCloudB.gui, _) = ptCloudB.gui.remove_radius_outlier(nb_points=20, radius=0.3)
-    print("With no outliers: " + str(len(ptCloudA.gui.points)))
-
 
     # ------------------------------------------
     # Crop table
@@ -213,18 +205,68 @@ def scene_objs_centroids(datapath):
     
     # Remove talbe
     ptCloudB.segment(distance_threshold=0.03, ransac_n=3, num_iterations= 200, outliers = True)
-    ptCloudB.view()
+    # ptCloudB.view()
+
+    # ------------------------------------------
+    # Cluster objects, get center and save them
+    # ------------------------------------------
+    group_idxs = list(ptCloudB.gui.cluster_dbscan(eps=0.045, min_points=50, print_progress=True))
+
+    # Filter clusters (-1 means noise)
+    obj_idxs = list(set(group_idxs))
+    colormap = cm.Pastel1(range(0, len(obj_idxs)))
+    if -1 in obj_idxs:
+        obj_idxs.remove(-1)
     
+    # Delete existing file
+    for file in glob.glob('../bin/objs/pcd/*.pcd'):
+        os.remove(file)
+        print('Temporary .pcd files removed')
+
+
+    print("#Objects:  "+ str(len(obj_idxs)))
+
+    obj_centers = np.zeros((len(obj_idxs),3))
+    for obj_idx in obj_idxs:
+        group_points_idxs = list(locate(group_idxs, lambda x: x == obj_idx))
+
+        ptcloud_group = ptCloudB.gui.select_by_index(group_points_idxs)
+
+        # Save object
+        filename = "../bin/objs/pcd/obj"+str(obj_idx)+".pcd"
+        o3d.io.write_point_cloud(filename,ptcloud_group)
+
+        #  Reverte translations and rotation
+    
+        ptCloudB.transgeom(0,10,0,0,0,0)
+        ptCloudB.transgeom(0,0,120,0,0,0)
+        ptCloudB.transgeom(120,0,0,0,0,0)
+        ptCloudB.transgeom(0,0,0,table_center[0],table_center[1],table_center[2]) 
+
+
+        # Get object center
+        obj_centers[obj_idx,:] = np.asarray(ptcloud_group.get_center())
+
+    return obj_centers
 def main():
 
     # --------------------------------------
     # Initialization
     # --------------------------------------
 
+    #Load Camera Intrinsics
+    with open("./lib/jsons/intrinsic.json",'r') as f:
+        extrinsics_matrix = json.load(f)
+    print(extrinsics_matrix)
+
+    #Load scene Image
+
+
+    #Load scene pointcloud
     dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
     scenes_path = dataset_path +'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/01.pcd' 
 
-    scene_objs_centroids(scenes_path)
+    print(scene_objs_centroids(scenes_path))
     
     exit(0)
 
