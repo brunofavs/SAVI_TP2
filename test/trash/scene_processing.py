@@ -10,7 +10,6 @@ from more_itertools import locate
 from matplotlib import cm
 import os
 import cv2
-import json
 
 view = {
 	"class_name" : "ViewTrajectory",
@@ -32,75 +31,6 @@ view = {
 	"version_minor" : 0
 }
 
-class PointCloudOperations():
-    def __init__(self,):
-        pass
-
-    def load(self, datapath ):
-        
-        # Load original pointcloud
-        print('Loading file '+ datapath)
-        self.ori = o3d.io.read_point_cloud(datapath)
-        print(self.ori)
-
-        # Copy original pcd
-        self.gui = deepcopy(self.ori)
-
-    def pre_process(self,voxelsize):
-
-        # Downsample scene
-        self.gui = self.gui.voxel_down_sample(voxel_size=voxelsize) 
-        print('After downsampling: ' + str(len(self.gui.points)) + ' points')
-
-        # Estimate normals
-        self.gui.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.05, max_nn=30))
-        self.gui.orient_normals_to_align_with_direction(orientation_reference=np.array([0, 0, 1]))
-
-
-    def transgeom(self,rx,ry,rz,tx,ty,tz):
-        
-        # Rotate 
-        rot = self.gui.get_rotation_matrix_from_xyz((math.radians(rx),math.radians(ry),math.radians(rz)))
-        self.gui.rotate(rot, center=(0, 0, 0,))
-
-        # Translate
-        self.gui.translate((tx,ty,tz))
-
-    def crop(self,xmin,ymin,zmin,xmax,ymax,zmax):
-
-        crop_box = np.array([[xmin, ymin, zmin], [xmax, ymax, zmax]])
-    
-        # Create a bounding box using the provided crop_box
-        bounding_box = o3d.geometry.AxisAlignedBoundingBox(min_bound=crop_box[0], max_bound=crop_box[1])
-
-        # Crop point cloud
-        self.gui = self.gui.crop(bounding_box)
-
-    def segment(self, distance_threshold=0.03, ransac_n=3, num_iterations=200 ,outliers = True,):
-
-        print('Starting plane detection')
-        _, inlier_idxs = self.gui.segment_plane(distance_threshold=distance_threshold, 
-                                                    ransac_n=ransac_n,
-                                                    num_iterations=num_iterations)
-
-
-        self.gui = self.gui.select_by_index(inlier_idxs, invert=outliers)
-
-    def view(self,seixos_on = True):
-        entities = [self.gui]
-         
-        if seixos_on:
-            seixos = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
-            entities.append(seixos)
-        
-        # entities.append(plane_ori_bounding_box)
-
-        # entities = [object_cloud]
-        o3d.visualization.draw_geometries(entities, 
-                                          zoom   =view['trajectory'][0]['zoom'],
-                                          front  =view['trajectory'][0]['front'],
-                                          lookat =view['trajectory'][0]['lookat'],
-                                          up     =view['trajectory'][0]['up'])
 
 class PlaneDetection():
     def __init__(self, point_cloud):
@@ -110,7 +40,7 @@ class PlaneDetection():
     def colorizeInliers(self, r,g,b):
         self.inlier_cloud.paint_uniform_color([r,g,b]) # paints the plane in red
 
-    def segment(self, distance_threshold=0.03, ransac_n=4, num_iterations=200 ,outliers = True,):
+    def segment(self, distance_threshold=0.03, ransac_n=4, num_iterations=200):
 
         print('Starting plane detection')
         plane_model, inlier_idxs = self.point_cloud.segment_plane(distance_threshold=distance_threshold, 
@@ -120,32 +50,93 @@ class PlaneDetection():
 
         self.inlier_cloud = self.point_cloud.select_by_index(inlier_idxs)
 
-        cloud = self.point_cloud.select_by_index(inlier_idxs, invert=outliers)
+        outlier_cloud = self.point_cloud.select_by_index(inlier_idxs, invert=False)
 
-        return cloud
+        return outlier_cloud
 
     def __str__(self):
         text = 'Segmented plane from pc with ' + str(len(self.point_cloud.points)) + ' with ' + str(len(self.inlier_cloud.points)) + ' inliers. '
         text += '\nPlane: ' + str(self.a) +  ' x + ' + str(self.b) + ' y + ' + str(self.c) + ' z + ' + str(self.d) + ' = 0' 
         return text
 
-def scene_objs_centroids(datapath):
+def crop_point_cloud_with_bbox(point_cloud, crop_box):
+    # Create a bounding box using the provided crop_box
+    bounding_box = o3d.geometry.AxisAlignedBoundingBox(min_bound=crop_box[0], max_bound=crop_box[1])
 
-    # ------------------------------------------
-    # Load Pointcloud
-    # ------------------------------------------
-    print('--------------------- PointCloud A --------------------- ')
-    ptCloudA = PointCloudOperations()
-    ptCloudA.load(datapath)
-    ptCloudA.pre_process(voxelsize = 0.004)
+    # Crop the point cloud
+    cropped_point_cloud = point_cloud.crop(bounding_box)
 
+    return cropped_point_cloud
+
+
+
+
+def scene_processing():
+
+
+
+def main():
+
+    # --------------------------------------
+    # Initialization
+    # --------------------------------------
+
+    # Camera Intrinsics
+    fx = 570
+    fy = 570
+    cx = 320
+    cy = 240
+    width = 640
+    height = 480
+    intrinsic_matrix = np.asarray([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
+
+    # Point Cloud Path
+    dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
+    scenes_path = dataset_path +'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd' 
+    scenes_paths = glob.glob(scenes_path + '/*.pcd')
+    
+    # Print available scenes pcd
+    available_scenes = []
+    for scenes in scenes_paths:
+        file_name = scenes.split('/')
+        file_name = file_name[-1]
+        available_scenes.append(file_name)
+    print('Available scenes: ' + str(available_scenes))
+
+    # User input scene select
+    # scene_n = input("Scene number: ")
+    scene_n = "04"
+
+    print('--------- Scene Properties --------- ')
+    # filename = dataset_path + '/rgbd_scenes_v2/pcd/'+ scene_n + ".pcd"
+    filename = f'{scenes_path}/{scene_n}.pcd'
+    print('Loading file '+ filename)
+    ptCloud_ori = o3d.io.read_point_cloud(filename)
+    print(ptCloud_ori)
+
+    # Downsample scene
+    ptCloud_ori_downsampled = ptCloud_ori.voxel_down_sample(voxel_size=0.05) 
+    print('After downsampling: ' + str(len(ptCloud_ori_downsampled.points)) + ' points')
+
+    # Generate carteesian frame object
+    seixos = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
+
+    # Load scene the image
+    img_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
+    scene_img = cv2.imread(img_path) # relative path
+    
+    exit(0)
     # ------------------------------------------
     # Estimte normals and remove non horizontal planes
     # ------------------------------------------
 
+    ptCloud_ori.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.05, max_nn=30))
+    ptCloud_ori.orient_normals_to_align_with_direction(orientation_reference=np.array([0, 0, 1]))
+
+
     # Select voxels idx that are 90º degrees with X Camera Axis
     hori_idxs = []
-    for idx,normal in enumerate(ptCloudA.gui.normals):
+    for idx,normal in enumerate(ptCloud_ori.normals):
 
         # Compute angle between two 3d vectors
         norm_normal = math.sqrt(normal[0]**2 + normal[1]**2 + normal[2]**2)
@@ -159,77 +150,64 @@ def scene_objs_centroids(datapath):
         if abs(theta - 90) < 0.05:  # we have a point that belongs to an horizontal surface
             hori_idxs.append(idx)
 
-    # Create new point cloud with only horizontal point cloud
-    ptCloudA.gui = ptCloudA.gui.select_by_index(hori_idxs)
-    print("Horizontal points: " + str(len(hori_idxs)))
+    # Create new point cloud
+    ptCloud_hori = ptCloud_ori.select_by_index(hori_idxs)
+    print("Horizontal: " + str(len(hori_idxs)))
 
-    
-    # ------------------------------------------
-    # Remove Outliers
-    # ------------------------------------------
-
-    (ptCloudA.gui, _) = ptCloudA.gui.remove_radius_outlier(nb_points=300, radius=0.3)
-    print("With no outliers: " + str(len(ptCloudA.gui.points)))
-    
-    # ------------------------------------------
-    # Find table center
-    # ------------------------------------------
-    ptCloudA.segment(distance_threshold=0.03, ransac_n=3, num_iterations=200, outliers = False)
-    table_center =  ptCloudA.gui.get_center()
-    print("Table center at: " + str(table_center))
-
-    # ------------------------------------------
-    # Load new Pointcloud
-    # ------------------------------------------
-    print('--------------------- PointCloud B --------------------- ')
-    ptCloudB = PointCloudOperations()
-    ptCloudB.load(datapath)
-    # ptCloudB.gui = ptCloudA.ori
-    ptCloudB.pre_process(voxelsize = 0.001)
 
     # ------------------------------------------
     # Remove Outliers
     # ------------------------------------------
+    (ptCloud_hori_clean, ind) = ptCloud_hori.remove_radius_outlier(nb_points=300, radius=0.3)
+    
+    
+    # ------------------------------------------
+    # Find table plane
+    # ------------------------------------------
+    table_plane = PlaneDetection(ptCloud_hori_clean)
+    ptCloud_table = table_plane.segment()
+    ptCloud_table_center = ptCloud_table.get_center()
 
-    (ptCloudB.gui, _) = ptCloudB.gui.remove_radius_outlier(nb_points=20, radius=0.3)
-    print("With no outliers: " + str(len(ptCloudA.gui.points)))
 
 
     # ------------------------------------------
-    # Crop table
+    # Translate and Rotate original point cloud
     # ------------------------------------------
-    
-    # Translate to the center of the table
-    ptCloudB.transgeom(0,0,0,-table_center[0],-table_center[1],-table_center[2]) 
+    ptCloud_GUI = deepcopy(ptCloud_ori)
 
-    # Rotate to align references 
-    ptCloudB.transgeom(-120,0,0,0,0,0)
-    ptCloudB.transgeom(0,0,-120,0,0,0)
-    ptCloudB.transgeom(0,-10,0,0,0,0)
+    # Translate
+    ptCloud_GUI.translate((-ptCloud_table_center[0],-ptCloud_table_center[1],-ptCloud_table_center[2]))
     
-    # Crop point cloud
-    ptCloudB.crop(-0.5,-0.5,-0.05,0.5,0.5,0.4)
-    print("After croping: " + str(len(ptCloudB.gui.points)))
-    
-    # Remove talbe
-    ptCloudB.segment(distance_threshold=0.03, ransac_n=3, num_iterations= 200, outliers = True)
-    ptCloudB.view()
-    
-def main():
+    # Rotate on X axis
+    rot = ptCloud_GUI.get_rotation_matrix_from_xyz((-2.1,0,0))
+    ptCloud_GUI.rotate(rot, center=(0, 0, 0,))
 
-    # --------------------------------------
-    # Initialization
-    # --------------------------------------
+    # Rotate on Z axis
+    rot = ptCloud_GUI.get_rotation_matrix_from_xyz((0,0,-2.1))
+    ptCloud_GUI.rotate(rot, center=(0, 0, 0,))
 
-    dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
-    scenes_path = dataset_path +'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/01.pcd' 
+    # Rotate on Y axis
+    rot = ptCloud_GUI.get_rotation_matrix_from_xyz((0,-0.15,0))
+    ptCloud_GUI.rotate(rot, center=(0, 0, 0,))
 
-    scene_objs_centroids(scenes_path)
-    
-    exit(0)
+    # ------------------------------------------
+    # Crop table from original point cloud
+    # ------------------------------------------
+
+    xmin = -0.5
+    ymin = -0.5
+    zmin = 0.05
+
+    xmax = 0.5
+    ymax = 0.5
+    zmax = 0.4
+
+    crop_box = np.array([[xmin, ymin, zmin], [xmax, ymax, zmax]])
 
 
-    
+    # Call the function to crop the point cloud
+    ptCloud_GUI_croped = crop_point_cloud_with_bbox(ptCloud_GUI, crop_box)
+    print("After croping: " + str(len(ptCloud_GUI_croped.points)))
 
     # ------------------------------------------
     # Cluster objects and save them
@@ -291,8 +269,6 @@ def main():
         # color = colormap[group_idx, 0:3]
         # ptcloud_group.paint_uniform_color(color)
         # group_point_clouds.append(ptcloud_group)
-       # Generate carteesian frame object
-   
 
     # --------------------------------------
     # Visualizations
