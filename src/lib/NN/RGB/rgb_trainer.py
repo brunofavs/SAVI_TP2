@@ -27,8 +27,8 @@ class Trainer():
         print(Fore.BLUE + 'Device is ' + self.device + Style.RESET_ALL)
 
         # Setup matplotlib figure
-        plt.title('Training Cats vs Dogs', fontweight="bold")
-        plt.axis([0, self.num_epochs, 0, 2])
+        plt.title('Washington Dataset', fontweight="bold")
+        plt.axis([0, self.num_epochs, 0, 3])
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         self.handle = None

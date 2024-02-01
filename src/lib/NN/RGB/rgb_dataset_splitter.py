@@ -17,6 +17,7 @@ def main():
 
     image_filenames = [file for file in image_filenames if "crop" in file and "depth" not in file and "mask" not in file]
 
+
     # Use a rule of 70% train, 20% validation, 10% test
 
     train_filenames, remaining_filenames = train_test_split(image_filenames, test_size=0.3)

@@ -4,9 +4,11 @@ import json
 import os
 import torch
 from torchvision import transforms
+import torchvision
+import torch.nn as nn
 import matplotlib.pyplot as plt
 
-from lib.NN.RGB.rgb_dataset                             import Dataset
+from lib.NN.RGB.rgb_dataset                             import DatasetRGB
 from lib.NN.RGB.model_architectures.classes_model       import Model
 from lib.NN.RGB.rgb_trainer                             import Trainer
 
@@ -16,28 +18,28 @@ def main():
     # -----------------------------------------------------------------
     # Hyperparameters initialization
     # -----------------------------------------------------------------
-    batch_size = 100
-    learning_rate = 0.001
-    num_epochs = 50
 
     hyperparams = {'batch_size':100,
                    'lr' : 0.001,
-                   'num_epochs' : 50}
-
-    # -----------------------------------------------------------------
-    # Create model
-    # -----------------------------------------------------------------
-    model = Model()
+                   'num_epochs' : 30}
 
     # -----------------------------------------------------------------
     # Prepare Datasets
     # -----------------------------------------------------------------
 
-    current_dir = os.getcwd()
+    script_dir = os.getcwd()
     os.chdir(f'{os.getenv("SAVI_TP2")}/dataset/jsons')
 
     with open('rgb_images_filenames.json', 'r') as f:
         dataset_filenames = json.load(f)
+
+    try:
+        with open('rgb_images_matchings.json', 'r') as f:
+            matching_dict = json.load(f)
+    except:
+        matching_dict = None
+    
+    os.chdir(script_dir)
 
     train_filenames = dataset_filenames['train_filenames']
     validation_filenames = dataset_filenames['validation_filenames']
@@ -48,15 +50,38 @@ def main():
     print('Used ' + str(len(train_filenames)) + ' for training and ' + str(len(validation_filenames)) +
           ' for validation.')
 
-    train_dataset = Dataset(train_filenames)
-    validation_dataset = Dataset(validation_filenames)
+
+    train_dataset = DatasetRGB(train_filenames,matching_dict)
+    validation_dataset = DatasetRGB(validation_filenames,matching_dict)
 
     # Try the train_dataset
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=hyperparams['batch_size'], shuffle=True)
     validation_loader = torch.utils.data.DataLoader(dataset=validation_dataset, batch_size=hyperparams['batch_size'], shuffle=True)
 
+    # -----------------------------------------------------------------
+    # Create model
+    # -----------------------------------------------------------------
+    # model = Model()
 
-    return
+
+    # * DensetNet121
+    # Load the pre-trained DenseNet121 model
+    model = torchvision.models.densenet121(pretrained=True)
+    print(model)
+
+    # Modify the last fully connected layer (classifier)
+    num_classes = len(matching_dict)
+    model.classifier = nn.Linear(model.classifier.in_features, num_classes)
+
+    # model.classifier = nn.Sequential(nn.Linear(model.classifier.in_features, num_classes),nn.Softmax(dim=1))
+    # Freeze pre-trained layers
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Unfreeze the parameters of the final fully connected layer
+    for param in model.classifier.parameters():
+        param.requires_grad = True
+
     # -----------------------------------------------------------------
     # Train
     # -----------------------------------------------------------------
@@ -65,7 +90,7 @@ def main():
                       validation_loader=validation_loader,
                       learning_rate=hyperparams['lr'],
                       num_epochs=hyperparams['num_epochs'],
-                      model_path='./lib/NN/trained_models/checkpoint.pkl',
+                      model_path=f'{os.getenv("SAVI_TP2")}/src/lib/NN/RGB/model_architectures/trained_models/densenet121_full_30ep.pkl',
                       load_model=True)
     trainer.train()
 

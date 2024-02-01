@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 
 
+import json
 import os
 import torch
 from torchvision import transforms
 from PIL import Image
 
 
-class Dataset(torch.utils.data.Dataset):
+class DatasetRGB(torch.utils.data.Dataset):
 
-    def __init__(self, filenames):
+    def __init__(self, filenames,matching_dict):
         self.filenames = filenames
         self.number_of_images = len(self.filenames)
 
         # Compute the corresponding labels
-        self.label_types = set()
+        self.label_types = set(matching_dict.keys()) if matching_dict else set()
         self.image_idx_labels = []
-        self.label_matchings = dict()
+        self.label_matchings = matching_dict if matching_dict else dict()
+
+        print(self.label_types)
+        print(self.label_matchings)
+
+        # return
 
         for filename in self.filenames:
             basename = os.path.basename(filename)
@@ -35,13 +41,24 @@ class Dataset(torch.utils.data.Dataset):
                 
             else:
                 self.label_types.add(label)
-                self.label_matchings[label] = len(self.label_types)
-                self.image_idx_labels.append(len(self.label_types))
+                self.label_matchings[label] = len(self.label_types)-1
+                self.image_idx_labels.append(len(self.label_types)-1)
+
             
+        script_dir = os.getcwd()
+
+        json_object = json.dumps(self.label_matchings, indent=2)
+
+        os.chdir(f'{os.getenv("SAVI_TP2")}/dataset/jsons') 
+        with open("rgb_images_matchings.json", "w") as outfile:
+            outfile.write(json_object)
         
-        print(self.label_matchings)
-        print(self.label_types)
-        print(self.image_idx_labels)
+        os.chdir(script_dir)
+                
+            
+        # print(self.label_matchings)
+        # print(self.label_types)
+        # print(self.image_idx_labels)
 
         self.transforms = transforms.Compose([
             transforms.Resize((224, 224)),
