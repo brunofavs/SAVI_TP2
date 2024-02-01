@@ -129,7 +129,7 @@ class PlaneDetection():
         text += '\nPlane: ' + str(self.a) +  ' x + ' + str(self.b) + ' y + ' + str(self.c) + ' z + ' + str(self.d) + ' = 0' 
         return text
 
-def scene_objs_centroids(datapath):
+def get_scene_objs_centroids(datapath):
 
     # ------------------------------------------
     # Load Pointcloud
@@ -248,107 +248,67 @@ def scene_objs_centroids(datapath):
         obj_centers[obj_idx,:] = np.asarray(ptcloud_group.get_center())
 
     return obj_centers
+
+def objs_images(img_path,centroids, intrinsics):
+
+    #Load image
+    scene_img = cv2.imread(img_path)
+
+    
+    for centroid in centroids:  
+        #Convert world centroid to camera center  
+        img_point, _  = cv2.projectPoints(centroid,np.zeros((3,1)),np.zeros((3,1)),intrinsics,np.zeros((5,1)))
+        img_point[0][0][:] = img_point
+
+
+        seg_size = (224,224)
+        start_point =  (img_point[0]-seg_size[0]/2, img_point[1]-seg_size[1]/2)
+        end_point   =  (img_point[0]+seg_size[0]/2, img_point[1]+seg_size[1]/2)
+        #Draw rectangle on main image
+        cv2.rectangle(scene_img,start_point, end_point,(0,0,255),3)
+    cv2.imshow('scene', scene_img)
+    cv2.waitKey(0)
 def main():
 
     # --------------------------------------
     # Initialization
     # --------------------------------------
 
+    # Scritp parameters
+    scene_n = "01"
+    dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
+
+
     #Load Camera Intrinsics
     with open("./lib/jsons/intrinsic.json",'r') as f:
-        extrinsics_matrix = json.load(f)
-    print(extrinsics_matrix)
-
+        extrinsics_matrix = np.asarray(json.load(f))
+    
     #Load scene Image
-
+    img_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
 
     #Load scene pointcloud
-    dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
-    scenes_path = dataset_path +'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/01.pcd' 
+    scenes_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
 
-    print(scene_objs_centroids(scenes_path))
+    # --------------------------------------
+    # Execution
+    # --------------------------------------
+
+    # Get scene objects centroid
+    # centroids = get_scene_objs_centroids(scenes_path)
+
+
+    centroids =np.asarray([[ 0.35646105 ,-0.22050809  ,0.06902391],                     
+                [ 0.16774505 ,-1.3631073   ,0.68673332],
+                [ 0.93245048 ,-1.44329362  ,1.33248909],
+                [ 0.42233888 ,-1.840807    ,1.88490167],
+                [ 2.00624375 ,-2.83768111  ,1.79761973]])
+
+    # Segment scene image based on centroid locaition
+    image_out = objs_images(img_path,centroids,extrinsics_matrix)
     
     exit(0)
 
 
-    
-
-    # ------------------------------------------
-    # Cluster objects and save them
-    # ------------------------------------------
-    group_idxs = list(ptCloud_GUI_croped.cluster_dbscan(eps=0.045, min_points=50, print_progress=True))
-
-    
-    # Filter clusters (-1 means noise)
-    obj_idxs = list(set(group_idxs))
-    colormap = cm.Pastel1(range(0, len(obj_idxs)))
-    if -1 in obj_idxs:
-        obj_idxs.remove(-1)
-    
-    print("#Objects:  "+ str(len(obj_idxs)))
-    
-    obj_centers = []
-    for obj_idx in obj_idxs:
-        group_points_idxs = list(locate(group_idxs, lambda x: x == obj_idx))
-
-        ptcloud_group = ptCloud_GUI_croped.select_by_index(group_points_idxs)
-
-        # Save object
-        filename = "../bin/objs/pcd/obj"+str(obj_idx)+".pcd"
-        o3d.io.write_point_cloud(filename,ptcloud_group)
-
-        # Rotate on Y axis
-        rot = ptcloud_group.get_rotation_matrix_from_xyz((0,+0.15,0))
-        ptcloud_group.rotate(rot, center=(0, 0, 0,))
-
-        # Rotate on Z axis
-        rot = ptcloud_group.get_rotation_matrix_from_xyz((0,0,+2.1))
-        ptcloud_group.rotate(rot, center=(0, 0, 0,))
-
-        # Roll back reference
-        rot = ptcloud_group.get_rotation_matrix_from_xyz((+2.1,0,0))
-        ptcloud_group.rotate(rot, center=(0, 0, 0,))
-
-        # Translate
-        ptcloud_group.translate((ptCloud_table_center[0],ptCloud_table_center[1],ptCloud_table_center[2]))
-
-        # Get object center
-        center = ptcloud_group.get_center()
-        center_homo = np.asarray([center[0],center[1],center[2], 1])
-
-        # dist_coeffs = np.array([k1, k2, p1, p2, k3], dtype=np.float32)
-        img_point, _  = cv2.projectPoints(center,np.zeros((3,1)),np.zeros((3,1)),intrinsic_matrix,np.zeros((5,1)))
-        print(img_point)
-        img_point_B = img_point[0][0][:]
-        print(img_point_B[0])
-        cv2.circle(scene_img,(round(img_point_B[0]),round(img_point_B[1])),50,(0,0,255),3)
-        
-     
-    cv2.imshow('scene', scene_img)
-    cv2.waitKey(0)
-
-    # group_point_clouds = []
-    # for group_idx in group_idxs:
-        # # Add color to object
-        # color = colormap[group_idx, 0:3]
-        # ptcloud_group.paint_uniform_color(color)
-        # group_point_clouds.append(ptcloud_group)
-       # Generate carteesian frame object
-   
-
-    # --------------------------------------
-    # Visualizations
-    # --------------------------------------
-    # entities = [ptcloud_group]
-    # entities.append(seixos)
-    # # entities.append(plane_ori_bounding_box)
-
-    # # entities = [object_cloud]
-    # o3d.visualization.draw_geometries(entities, 
-    #                                   zoom   =view['trajectory'][0]['zoom'],
-    #                                   front  =view['trajectory'][0]['front'],
-    #                                   lookat =view['trajectory'][0]['lookat'],
-    #                                   up     =view['trajectory'][0]['up'])
 
 if __name__ == "__main__":
     
