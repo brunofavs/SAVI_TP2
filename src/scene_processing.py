@@ -129,14 +129,15 @@ class PlaneDetection():
         text += '\nPlane: ' + str(self.a) +  ' x + ' + str(self.b) + ' y + ' + str(self.c) + ' z + ' + str(self.d) + ' = 0' 
         return text
 
-def get_scene_objs_centroids(datapath):
+def objs_segmentation(scenes_path,dump_path):
+    
 
     # ------------------------------------------
     # Load Pointcloud
     # ------------------------------------------
     print('--------------------- PointCloud A --------------------- ')
     ptCloudA = PointCloudOperations()
-    ptCloudA.load(datapath)
+    ptCloudA.load(scenes_path)
     ptCloudA.pre_process(voxelsize = 0.004)
 
     # ------------------------------------------
@@ -205,11 +206,17 @@ def get_scene_objs_centroids(datapath):
     
     # Remove talbe
     ptCloudB.segment(distance_threshold=0.03, ransac_n=3, num_iterations= 200, outliers = True)
-    # ptCloudB.view()
+    
 
     # ------------------------------------------
     # Cluster objects, get center and save them
     # ------------------------------------------
+    #  Reverte translations and rotation
+    ptCloudB.transgeom(0,10,0,0,0,0)
+    ptCloudB.transgeom(0,0,120,0,0,0)
+    ptCloudB.transgeom(120,0,0,0,0,0)
+    ptCloudB.transgeom(0,0,0,table_center[0],table_center[1],table_center[2]) 
+
     group_idxs = list(ptCloudB.gui.cluster_dbscan(eps=0.045, min_points=50, print_progress=True))
 
     # Filter clusters (-1 means noise)
@@ -218,10 +225,10 @@ def get_scene_objs_centroids(datapath):
     if -1 in obj_idxs:
         obj_idxs.remove(-1)
     
-    # Delete existing file
-    for file in glob.glob('../bin/objs/pcd/*.pcd'):
+    # Delete existing files
+    for file in glob.glob(dump_path+ 'pcd/*.pcd'):
         os.remove(file)
-        print('Temporary .pcd files removed')
+    print('Temporary .pcd files removed')
 
 
     print("#Objects:  "+ str(len(obj_idxs)))
@@ -232,42 +239,118 @@ def get_scene_objs_centroids(datapath):
 
         ptcloud_group = ptCloudB.gui.select_by_index(group_points_idxs)
 
-        # Save object
-        filename = "../bin/objs/pcd/obj"+str(obj_idx)+".pcd"
+        # Save object pcd
+        filename = dump_path + "pcd/obj_"+str(obj_idx)+".pcd"
         o3d.io.write_point_cloud(filename,ptcloud_group)
 
-        #  Reverte translations and rotation
-    
-        ptCloudB.transgeom(0,10,0,0,0,0)
-        ptCloudB.transgeom(0,0,120,0,0,0)
-        ptCloudB.transgeom(120,0,0,0,0,0)
-        ptCloudB.transgeom(0,0,0,table_center[0],table_center[1],table_center[2]) 
-
-
         # Get object center
-        obj_centers[obj_idx,:] = np.asarray(ptcloud_group.get_center())
+        # obj_centers[obj_idx,:] = np.asarray(ptcloud_group.get_center())
 
-    return obj_centers
+    print("Objects pcd saved at " + dump_path + "pcd/")
 
-def objs_images(img_path,centroids, intrinsics):
+def objs_images(img_path,centroids, intrinsics, dump_path):
+    
+    print("")
+    print('--------------------- Obj Image Croppping --------------------- ')
 
     #Load image
-    scene_img = cv2.imread(img_path)
+    scene_ori = cv2.imread(img_path)
+    scene_gui = deepcopy(scene_ori)
 
-    
+    # Delete existing files
+    for file in glob.glob(dump_path + 'rgb/*.png'):
+        os.remove(file)
+    print('Temporary .png files removed')
+
+    count = 0
     for centroid in centroids:  
         #Convert world centroid to camera center  
         img_point, _  = cv2.projectPoints(centroid,np.zeros((3,1)),np.zeros((3,1)),intrinsics,np.zeros((5,1)))
-        img_point[0][0][:] = img_point
-
+        img_point = img_point[0][0][:]
 
         seg_size = (224,224)
-        start_point =  (img_point[0]-seg_size[0]/2, img_point[1]-seg_size[1]/2)
-        end_point   =  (img_point[0]+seg_size[0]/2, img_point[1]+seg_size[1]/2)
+        start_point =  (round(img_point[0]-seg_size[0]/2), round(img_point[1]-seg_size[1]/2))
+        end_point   =  (round(img_point[0]+seg_size[0]/2), round(img_point[1]+seg_size[1]/2))
+        
+        print("("+ str(count) + ") World: " + str(centroid) + " -> Image: " + str(img_point))
         #Draw rectangle on main image
-        cv2.rectangle(scene_img,start_point, end_point,(0,0,255),3)
-    cv2.imshow('scene', scene_img)
-    cv2.waitKey(0)
+        cv2.rectangle(scene_gui,start_point, end_point,(0,0,255),3)
+
+        # Crop and save image
+        cropped_image = scene_ori[start_point[1]: start_point[1]+seg_size[1], start_point[0]: start_point[0]+seg_size[0]] 
+        cv2.imwrite(dump_path + "rgb/obj_" + str(count) + ".png", cropped_image)
+        count = count + 1
+
+        # cv2.imshow('scene', cropped_image)
+        # cv2.waitKey(0)    
+
+        # break
+
+    print("Objects images saved at " + dump_path + "objs/rgb/")
+
+    return scene_gui
+
+def most_common(lst):
+    return max(set(lst), key=lst.count)
+
+def objs_labeling(scene_path,objs_path,labels_path):
+
+    # ------------------------------------------
+    # Load scene labeling
+    # ------------------------------------------
+    # bowl=1, cap=2, cereal_box=3, coffee_mug=4, coffee_table=5 
+    # office_chair=6, soda_can=7, sofa=8, table=9, background=10
+    
+    f = open(labels_path,'r')
+    labels = f.read().splitlines()
+    labels.pop(0) # Remove first item of label list
+
+    label_dict = {
+        '1': "bowl"         ,    
+        '2': "cap"          ,
+        '3': "cereal_box"   ,
+        '4': "coffee_mug"   ,
+        '5': "coffee_table" ,
+        '6': "office_chair" ,
+        '7': "soda_can"     ,
+        '8': "sofa"         ,
+        '9': "table"        ,
+        '10': "background"   
+    }
+
+    # ------------------------------------------
+    # Process objs pointcloud
+    # ------------------------------------------
+    for obj_pcd in os.listdir(objs_path + "pcd/"):
+
+        # Load obj pointcloud
+        ptCloud_obj = o3d.io.read_point_cloud(objs_path + "pcd/" + obj_pcd)
+        # Load scene pointcloud (for groundtruth)
+        ptCloud_ori = o3d.io.read_point_cloud(scene_path)
+ 
+        # Find obj index from croped obj point cloud
+        dists = ptCloud_ori.compute_point_cloud_distance(ptCloud_obj)
+        dists = np.asarray(dists)
+        scene_ind = np.where(dists < 0.0003)[0]
+
+        obj_label = []
+        for idx in scene_ind:
+            label = labels[idx]
+            obj_label.append(label)
+
+        label_name = label_dict[most_common(obj_label)]
+
+        # Get geometric centroid
+        centroid = ptCloud_obj.get_center()
+
+        # Rename object
+        src = objs_path + "pcd/" + obj_pcd
+        dst = objs_path + "pcd/obj_"+ label_name + ".pcd"
+        os.rename(src, dst)
+
+        print("Renamed " +obj_pcd + " to obj_" + label_name + ".pcd")
+
+
 def main():
 
     # --------------------------------------
@@ -281,31 +364,44 @@ def main():
 
     #Load Camera Intrinsics
     with open("./lib/jsons/intrinsic.json",'r') as f:
-        extrinsics_matrix = np.asarray(json.load(f))
+        intrinsics_matrix = np.asarray(json.load(f))
     
     #Load scene Image
     img_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
 
     #Load scene pointcloud
-    scenes_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
+    scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
+    label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label'
+
+    # Path to Dump objects pcd and images
+    objs_path = dataset_path + '/dump/objs/'
+
+
 
     # --------------------------------------
     # Execution
     # --------------------------------------
 
-    # Get scene objects centroid
-    # centroids = get_scene_objs_centroids(scenes_path)
+    # Segment objects from scene
+    #objs_segmentation(scenes_path,objs_path)
+
+    objs_labeling(scene_path,objs_path,label_path)
+    exit(0)
 
 
-    centroids =np.asarray([[ 0.35646105 ,-0.22050809  ,0.06902391],                     
-                [ 0.16774505 ,-1.3631073   ,0.68673332],
-                [ 0.93245048 ,-1.44329362  ,1.33248909],
-                [ 0.42233888 ,-1.840807    ,1.88490167],
-                [ 2.00624375 ,-2.83768111  ,1.79761973]])
+    # centroids =np.asarray([ [ 0.14684823 ,-0.27725724  ,1.52598023],
+    #                         [-0.04918555 ,-0.35024633  ,1.72076383],
+    #                         [-0.32424063 ,-0.21686039  ,1.36300249],
+    #                         [ 0.151531   ,-0.09231694  ,1.05488876],
+    #                         [-0.35173654 ,-0.23814577  ,1.72374004],
+    #                         [-0.2840418  , 0.06269626  ,0.93281509]])
+                            
 
-    # Segment scene image based on centroid locaition
-    image_out = objs_images(img_path,centroids,extrinsics_matrix)
+    # # Segment scene image based on centroid locaition
+    # image_out = objs_images(img_path,centroids,intrinsics_matrix,dump_path)
     
+    cv2.imshow('scene', image_out)
+    cv2.waitKey(0)
     exit(0)
 
 

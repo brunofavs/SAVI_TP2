@@ -69,12 +69,6 @@ def crop_point_cloud_with_bbox(point_cloud, crop_box):
     return cropped_point_cloud
 
 
-
-
-def scene_processing():
-
-
-
 def main():
 
     # --------------------------------------
