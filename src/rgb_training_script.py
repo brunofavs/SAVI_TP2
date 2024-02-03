@@ -6,6 +6,8 @@ import torch
 from torchvision import transforms
 import torchvision
 import torch.nn as nn
+from torchvision.models import densenet121,DenseNet121_Weights
+
 import matplotlib.pyplot as plt
 
 from lib.NN.RGB.rgb_dataset                             import DatasetRGB
@@ -35,9 +37,9 @@ def main():
 
     try:
         with open('rgb_images_matchings.json', 'r') as f:
-            matching_dict = json.load(f)
+            label_names2idx = json.load(f)
     except:
-        matching_dict = None
+        label_names2idx = None
     
     os.chdir(script_dir)
 
@@ -51,8 +53,8 @@ def main():
           ' for validation.')
 
 
-    train_dataset = DatasetRGB(train_filenames,matching_dict)
-    validation_dataset = DatasetRGB(validation_filenames,matching_dict)
+    train_dataset = DatasetRGB(train_filenames,label_names2idx)
+    validation_dataset = DatasetRGB(validation_filenames,label_names2idx)
 
     # Try the train_dataset
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=hyperparams['batch_size'], shuffle=True)
@@ -66,11 +68,10 @@ def main():
 
     # * DensetNet121
     # Load the pre-trained DenseNet121 model
-    model = torchvision.models.densenet121(pretrained=True)
-    print(model)
+    model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
 
     # Modify the last fully connected layer (classifier)
-    num_classes = len(matching_dict)
+    num_classes = len(label_names2idx)
     model.classifier = nn.Linear(model.classifier.in_features, num_classes)
 
     # model.classifier = nn.Sequential(nn.Linear(model.classifier.in_features, num_classes),nn.Softmax(dim=1))
