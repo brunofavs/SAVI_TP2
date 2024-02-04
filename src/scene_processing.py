@@ -284,7 +284,6 @@ def objs_images(img_path,centroids, intrinsics, dump_path):
 
     return scene_gui
 
-
 def objs_ptcloud_labeling(scene_path,objs_path,labels_path):
 
     print("")
@@ -359,6 +358,26 @@ def objs_ptcloud_labeling(scene_path,objs_path,labels_path):
         # Save data
         # objs_props[obj_idx,:] = [label, centroid, bbox]
 
+def objs_ptcloud_properties(objs_path):
+
+    print("")
+    print('--------------------- Objs Properties --------------------- ')
+   
+    for idx, obj_pcd in enumerate(os.listdir(objs_path + "pcd/")):
+
+        # Load obj pointcloud
+        ptCloud_obj = o3d.io.read_point_cloud(objs_path + "pcd/" + obj_pcd)
+ 
+        bbox     = ptCloud_obj.get_axis_aligned_bounding_box()
+        print(idx)
+        # print(centroid)
+        print(bbox)
+        print(bbox.get_max_bound())
+        print(bbox.get_min_bound())
+
+        # Save data
+        # objs_props[obj_idx,:] = [label, centroid, bbox]
+
 
 def main():
 
@@ -393,8 +412,11 @@ def main():
     # Segment objects from scene
     # objs_ptcloud_segmentation(scene_path,objs_path)
 
-    objs_ptcloud_labeling(scene_path,objs_path,label_path)
+    # objs_ptcloud_labeling(scene_path,objs_path,label_path)
 
+    objs_ptcloud_properties(objs_path)
+
+    
     exit(0)
 
 
@@ -416,5 +438,4 @@ def main():
 
 
 if __name__ == "__main__":
-    
     main()
