@@ -39,10 +39,10 @@ view = {
 }
 
 class PointCloudOperations():
-    def __init__(self,):
+    def __init__(self):
         pass
 
-    def load(self, datapath ):
+    def load(self, datapath):
         
         # Load original pointcloud
         print('Loading file '+ datapath)
@@ -108,35 +108,9 @@ class PointCloudOperations():
                                           lookat =view['trajectory'][0]['lookat'],
                                           up     =view['trajectory'][0]['up'])
 
-    def __init__(self, point_cloud):
-
-        self.point_cloud = point_cloud
-
-    def colorizeInliers(self, r,g,b):
-        self.inlier_cloud.paint_uniform_color([r,g,b]) # paints the plane in red
-
-    def segment(self, distance_threshold=0.03, ransac_n=4, num_iterations=200 ,outliers = True,):
-
-        print('Starting plane detection')
-        plane_model, inlier_idxs = self.point_cloud.segment_plane(distance_threshold=distance_threshold, 
-                                                    ransac_n=ransac_n,
-                                                    num_iterations=num_iterations)
-        [self.a, self.b, self.c, self.d] = plane_model
-
-        self.inlier_cloud = self.point_cloud.select_by_index(inlier_idxs)
-
-        cloud = self.point_cloud.select_by_index(inlier_idxs, invert=outliers)
-
-        return cloud
-
-    def __str__(self):
-        text = 'Segmented plane from pc with ' + str(len(self.point_cloud.points)) + ' with ' + str(len(self.inlier_cloud.points)) + ' inliers. '
-        text += '\nPlane: ' + str(self.a) +  ' x + ' + str(self.b) + ' y + ' + str(self.c) + ' z + ' + str(self.d) + ' = 0' 
-        return text
-
+   
 def most_common(lst):
     return max(set(lst), key=lst.count)
-
 
 def objs_ptcloud_segmentation(scenes_path,dump_path):
     
@@ -242,7 +216,7 @@ def objs_ptcloud_segmentation(scenes_path,dump_path):
 
     print("#Objects:  "+ str(len(obj_idxs)))
 
-    obj_centers = np.zeros((len(obj_idxs),3))
+    objs_props = np.zeros((len(obj_idxs),3))
     for obj_idx in obj_idxs:
         group_points_idxs = list(locate(group_idxs, lambda x: x == obj_idx))
 
@@ -252,10 +226,21 @@ def objs_ptcloud_segmentation(scenes_path,dump_path):
         filename = dump_path + "pcd/obj_"+str(obj_idx)+".pcd"
         o3d.io.write_point_cloud(filename,ptcloud_group)
 
-        # Get object center
-        # obj_centers[obj_idx,:] = np.asarray(ptcloud_group.get_center())
+        # # Get object center
+        # label    = 'obj_' + str(obj_idx)
+        # centroid = np.asarray(ptcloud_group.get_center())
+        # bbox     = np.asarray(ptcloud_group.get_axis_aligned_bounding_box())
 
+        # print(label)
+        # print(centroid)
+        # print(bbox)
+
+        # # Save data
+        # objs_props[obj_idx,:] = [label, centroid, bbox]
+
+    print(objs_props) 
     print("Objects pcd saved at " + dump_path + "pcd/")
+    return objs_props
 
 def objs_images(img_path,centroids, intrinsics, dump_path):
     
@@ -349,15 +334,30 @@ def objs_ptcloud_labeling(scene_path,objs_path,labels_path):
 
         label_name = label_dict[most_common(obj_label)]
 
-        # Get geometric centroid
-        centroid = ptCloud_obj.get_center()
+        # # Get geometric centroid
+        # centroid = ptCloud_obj.get_center()
 
         # Rename object
         src = objs_path + "pcd/" + obj_pcd
         dst = objs_path + "pcd/obj_"+ label_name + ".pcd"
         os.rename(src, dst)
 
-        print("Renamed " +obj_pcd + " to obj_" + label_name + ".pcd")
+        print("Renamed " + obj_pcd + " to obj_" + label_name + ".pcd")
+
+        # Get object properties
+        # label    = 'obj_' + str(obj_idx)
+        # centroid = np.asarray(ptCloud_obj.get_center())
+ 
+        bbox     = ptCloud_obj.get_axis_aligned_bounding_box()
+
+        print(label)
+        # print(centroid)
+        print(bbox)
+        print(bbox.get_max_bound())
+        print(bbox.get_min_bound())
+
+        # Save data
+        # objs_props[obj_idx,:] = [label, centroid, bbox]
 
 
 def main():
@@ -375,10 +375,9 @@ def main():
     with open("./lib/jsons/intrinsic.json",'r') as f:
         intrinsics_matrix = np.asarray(json.load(f))
     
-    #Load scene Image
-    img_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
 
     #Load scene pointcloud
+    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
     scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
     label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label'
 
@@ -392,9 +391,10 @@ def main():
     # --------------------------------------
 
     # Segment objects from scene
-    objs_ptcloud_segmentation(scene_path,objs_path)
+    # objs_ptcloud_segmentation(scene_path,objs_path)
 
     objs_ptcloud_labeling(scene_path,objs_path,label_path)
+
     exit(0)
 
 
