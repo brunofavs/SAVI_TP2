@@ -109,10 +109,10 @@ class PointCloudOperations():
                                           up     =view['trajectory'][0]['up'])
 
    
-def most_common(lst):
+def mostCommon(lst):
     return max(set(lst), key=lst.count)
 
-def objs_ptcloud_segmentation(scenes_path,dump_path):
+def objsPtcloudSegmentation(scenes_path,dump_path):
     
 
     # ------------------------------------------
@@ -242,7 +242,7 @@ def objs_ptcloud_segmentation(scenes_path,dump_path):
     print("Objects pcd saved at " + dump_path + "pcd/")
     return objs_props
 
-def objs_images(img_path,centroids, intrinsics, dump_path):
+def objsImages(img_path,centroids, intrinsics, dump_path):
     
     print("")
     print('--------------------- Obj Image Croppping --------------------- ')
@@ -284,7 +284,7 @@ def objs_images(img_path,centroids, intrinsics, dump_path):
 
     return scene_gui
 
-def objs_ptcloud_labeling(scene_path,objs_path,labels_path):
+def objsPtcloudLabeling(scene_path,objs_path,labels_path):
 
     print("")
     print('--------------------- Objs setting Ground Truth --------------------- ')
@@ -331,7 +331,7 @@ def objs_ptcloud_labeling(scene_path,objs_path,labels_path):
             label = labels[idx]
             obj_label.append(label)
 
-        label_name = label_dict[most_common(obj_label)]
+        label_name = label_dict[mostCommon(obj_label)]
 
         # # Get geometric centroid
         # centroid = ptCloud_obj.get_center()
@@ -358,7 +358,7 @@ def objs_ptcloud_labeling(scene_path,objs_path,labels_path):
         # Save data
         # objs_props[obj_idx,:] = [label, centroid, bbox]
 
-def objs_ptcloud_properties(objs_path):
+def objsPtcloudProperties(objs_path):
 
     print("")
     print('--------------------- Objs Properties --------------------- ')
@@ -410,11 +410,11 @@ def main():
     # --------------------------------------
 
     # Segment objects from scene
-    # objs_ptcloud_segmentation(scene_path,objs_path)
+    objsPtcloudSegmentation(scene_path,objs_path)
 
     # objs_ptcloud_labeling(scene_path,objs_path,label_path)
 
-    objs_ptcloud_properties(objs_path)
+    # objs_ptcloud_properties(objs_path)
 
     
     exit(0)
