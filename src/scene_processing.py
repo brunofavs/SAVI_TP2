@@ -12,6 +12,12 @@ import os
 import cv2
 import json
 
+
+# TODO list:
+# .Groundtruth imagens;
+# .Bounding box mask;
+# .Scenes com labeling;
+
 view = {
 	"class_name" : "ViewTrajectory",
 	"interval" : 29,
@@ -295,6 +301,8 @@ def most_common(lst):
 
 def objs_labeling(scene_path,objs_path,labels_path):
 
+    print("")
+    print('--------------------- Objs setting Ground Truth --------------------- ')
     # ------------------------------------------
     # Load scene labeling
     # ------------------------------------------
@@ -374,8 +382,8 @@ def main():
     label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label'
 
     # Path to Dump objects pcd and images
-    objs_path = dataset_path + '/dump/objs/'
-
+    # objs_path = dataset_path + '../bin/objs/'
+    objs_path = '../bin/objs/'
 
 
     # --------------------------------------
@@ -383,7 +391,7 @@ def main():
     # --------------------------------------
 
     # Segment objects from scene
-    #objs_segmentation(scenes_path,objs_path)
+    objs_segmentation(scene_path,objs_path)
 
     objs_labeling(scene_path,objs_path,label_path)
     exit(0)
