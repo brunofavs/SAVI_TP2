@@ -108,7 +108,6 @@ class PointCloudOperations():
                                           lookat =view['trajectory'][0]['lookat'],
                                           up     =view['trajectory'][0]['up'])
 
-class PlaneDetection():
     def __init__(self, point_cloud):
 
         self.point_cloud = point_cloud
@@ -135,7 +134,11 @@ class PlaneDetection():
         text += '\nPlane: ' + str(self.a) +  ' x + ' + str(self.b) + ' y + ' + str(self.c) + ' z + ' + str(self.d) + ' = 0' 
         return text
 
-def objs_segmentation(scenes_path,dump_path):
+def most_common(lst):
+    return max(set(lst), key=lst.count)
+
+
+def objs_ptcloud_segmentation(scenes_path,dump_path):
     
 
     # ------------------------------------------
@@ -296,10 +299,8 @@ def objs_images(img_path,centroids, intrinsics, dump_path):
 
     return scene_gui
 
-def most_common(lst):
-    return max(set(lst), key=lst.count)
 
-def objs_labeling(scene_path,objs_path,labels_path):
+def objs_ptcloud_labeling(scene_path,objs_path,labels_path):
 
     print("")
     print('--------------------- Objs setting Ground Truth --------------------- ')
@@ -391,9 +392,9 @@ def main():
     # --------------------------------------
 
     # Segment objects from scene
-    objs_segmentation(scene_path,objs_path)
+    objs_ptcloud_segmentation(scene_path,objs_path)
 
-    objs_labeling(scene_path,objs_path,label_path)
+    objs_ptcloud_labeling(scene_path,objs_path,label_path)
     exit(0)
 
 
