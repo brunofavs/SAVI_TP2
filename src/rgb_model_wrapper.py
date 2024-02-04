@@ -51,7 +51,6 @@ class modelWrapper:
         # Load model
         # -----------------------------------------------------------------
 
-        # self.model = torchvision.models.densenet121(pretrained=True)
         self.model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
         self.num_classes = len(self.label_names2idx)
         # Modify the last fully connected layer (classifier)
