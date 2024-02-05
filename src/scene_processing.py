@@ -242,9 +242,10 @@ def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
     
     quat_df = [0.451538, -0.0219017, 0.812727, 0.367557]
     rot = Rotation.from_quat(quat_df)
-    rot_euler = rot.as_euler('xyz', degrees=True)
+    rot_euler = rot.as_euler('xyz', degrees=False)
     trans =  np.asarray([-0.674774, -0.776193, 1.75478])
 
+    print(rot_euler)
 
     print("")
     print('--------------------- Obj Image Croppping --------------------- ')
@@ -282,11 +283,12 @@ def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
         # centr_I, _  = cv2.projectPoints(centroid_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
         centr_I, _  = cv2.projectPoints(centroid_W,rot_euler,trans,intrinsics_matrix,np.zeros((5,1)))
         centr_I     = centr_I[0][0][:]
-    
-        cv2.circle(scene_gui, (round(centr_I[0]),round(centr_I[1])), 20, (255,0,0), 2)
+
+        print(centr_I)
+        cv2.circle(scene_gui, (round(centr_I[0]),abs(round(centr_I[1]))), 20, (255,0,0), 2)
         cv2.imshow('scene', scene_gui)
         cv2.waitKey(0)
-        exit(0)
+        continue
 
         seg_size    = (224,224)
         start_point =  (round(centr_I[0]-seg_size[0]/2), round(centr_I[1]-seg_size[1]/2))
@@ -422,7 +424,7 @@ def main():
     
 
     #Load scene pointcloud
-    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
+    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00462-color.png'
     scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
     label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label'
 
@@ -430,10 +432,6 @@ def main():
     # objs_path = dataset_path + '../bin/objs/'
     objs_path = '../bin/objs/'
 
-    scene_ori = cv2.imread(img_path)
-    cv2.imshow('scene', scene_ori)
-    cv2.waitKey(0)
-    exit(0)
     # --------------------------------------
     # Execution
     # --------------------------------------
@@ -441,24 +439,12 @@ def main():
     # Segment objects from scene
     # objsPtcloudSegmentation(scene_path,objs_path)
 
-    objsPtcloudLabeling(scene_path,objs_path,label_path)
+    # objsPtcloudLabeling(scene_path,objs_path,label_path)
 
-    # objs_ptcloud_properties(objs_path)
-
-    
-    exit(0)
-
-
-    centroids =np.asarray([ [ 0.14684823 ,-0.27725724  ,1.52598023],
-                            [-0.04918555 ,-0.35024633  ,1.72076383],
-                            [-0.32424063 ,-0.21686039  ,1.36300249],
-                            [ 0.151531   ,-0.09231694  ,1.05488876],
-                            [-0.35173654 ,-0.23814577  ,1.72374004],
-                            [-0.2840418  , 0.06269626  ,0.93281509]])
-                            
+    objs_props =  objsPtcloudProperties(objs_path)
 
     # # Segment scene image based on centroid locaition
-    # image_out = objs_images(img_path,centroids,intrinsics_matrix,dump_path)
+    image_out = objsImages(img_path,objs_props,intrinsics_matrix,objs_path)
     
     cv2.imshow('scene', image_out)
     cv2.waitKey(0)
