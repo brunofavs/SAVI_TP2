@@ -107,9 +107,10 @@ class PointCloudOperations():
                                           front  =view['trajectory'][0]['front'],
                                           lookat =view['trajectory'][0]['lookat'],
                                           up     =view['trajectory'][0]['up'])
-
    
 def mostCommon(lst):
+    # Converts to set and then tests for each unique element the return value of lst.count(element)
+    # Without converting to set would still work but would be a lot less efficient
     return max(set(lst), key=lst.count)
 
 def objsPtcloudSegmentation(scenes_path,dump_path):
@@ -159,6 +160,12 @@ def objsPtcloudSegmentation(scenes_path,dump_path):
     # Find table center
     # ------------------------------------------
     ptCloudA.segment(distance_threshold=0.03, ransac_n=3, num_iterations=200, outliers = False)
+    
+    '''TODO Maybe instead search for the most quadrangular/circular segment?
+            What happens if the table isn't in the center?
+    '''
+
+
     table_center = ptCloudA.gui.get_center()
     print("Table center at: " + str(table_center))
 
@@ -179,6 +186,7 @@ def objsPtcloudSegmentation(scenes_path,dump_path):
     ptCloudB.transgeom(0,0,0,-table_center[0],-table_center[1],-table_center[2]) 
 
     # Rotate to align references 
+    # * This is hardcoded, what would be a better way?
     ptCloudB.transgeom(-120,0,0,0,0,0)
     ptCloudB.transgeom(0,0,-120,0,0,0)
     ptCloudB.transgeom(0,-10,0,0,0,0)
@@ -194,7 +202,10 @@ def objsPtcloudSegmentation(scenes_path,dump_path):
     # ------------------------------------------
     # Cluster objects, get center and save them
     # ------------------------------------------
-    #  Reverte translations and rotation
+
+    #  Revert translations and rotation
+    # *Again, this will break upon switching scene
+    
     ptCloudB.transgeom(0,10,0,0,0,0)
     ptCloudB.transgeom(0,0,120,0,0,0)
     ptCloudB.transgeom(120,0,0,0,0,0)
@@ -411,7 +422,7 @@ def main():
     
 
     #Load scene pointcloud
-    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00462-color.png'
+    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
     scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
     label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label'
 
@@ -430,21 +441,24 @@ def main():
     # Segment objects from scene
     # objsPtcloudSegmentation(scene_path,objs_path)
 
-    # objs_ptcloud_labeling(scene_path,objs_path,label_path)
+    objsPtcloudLabeling(scene_path,objs_path,label_path)
 
-    objs_props = objsPtcloudProperties(objs_path)
+    # objs_ptcloud_properties(objs_path)
+
+    
+    exit(0)
 
 
-    # centroids =np.asarray([ [ 0.14684823 ,-0.27725724  ,1.52598023],
-    #                         [-0.04918555 ,-0.35024633  ,1.72076383],
-    #                         [-0.32424063 ,-0.21686039  ,1.36300249],
-    #                         [ 0.151531   ,-0.09231694  ,1.05488876],
-    #                         [-0.35173654 ,-0.23814577  ,1.72374004],
-    #                         [-0.2840418  , 0.06269626  ,0.93281509]])
+    centroids =np.asarray([ [ 0.14684823 ,-0.27725724  ,1.52598023],
+                            [-0.04918555 ,-0.35024633  ,1.72076383],
+                            [-0.32424063 ,-0.21686039  ,1.36300249],
+                            [ 0.151531   ,-0.09231694  ,1.05488876],
+                            [-0.35173654 ,-0.23814577  ,1.72374004],
+                            [-0.2840418  , 0.06269626  ,0.93281509]])
                             
 
     # # Segment scene image based on centroid locaition
-    image_out = objsImages(img_path,objs_props,intrinsics_matrix,objs_path)
+    # image_out = objs_images(img_path,centroids,intrinsics_matrix,dump_path)
     
     cv2.imshow('scene', image_out)
     cv2.waitKey(0)
