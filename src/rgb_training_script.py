@@ -32,8 +32,17 @@ def main():
     script_dir = os.getcwd()
     os.chdir(f'{os.getenv("SAVI_TP2")}/dataset/jsons')
 
-    with open('rgb_images_filenames.json', 'r') as f:
+    # with open('rgb_images_filenames.json', 'r') as f:
+    #     dataset_filenames = json.load(f)
+
+    with open('rgb_images_filenames_mini.json', 'r') as f:
         dataset_filenames = json.load(f)
+
+    # try:
+    #     with open('rgb_images_matchings.json', 'r') as f:
+    #         label_names2idx = json.load(f)
+    # except:
+    #     label_names2idx = None
 
     try:
         with open('rgb_images_matchings.json', 'r') as f:

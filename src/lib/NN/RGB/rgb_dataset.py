@@ -50,7 +50,7 @@ class DatasetRGB(torch.utils.data.Dataset):
         json_object = json.dumps(self.label_matchings, indent=2)
 
         os.chdir(f'{os.getenv("SAVI_TP2")}/dataset/jsons') 
-        with open("rgb_images_matchings.json", "w") as outfile:
+        with open("rgb_images_matchings_mini.json", "w") as outfile:
             outfile.write(json_object)
         
         os.chdir(script_dir)
