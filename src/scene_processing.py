@@ -54,15 +54,16 @@ def flatten_list(nested_list):
             flattened_list.append(item)
     return flattened_list
 
+
 def main():
 
     #* Initialize model wrapper
 
-    predicter = modelWrapper(model_name = "densenet121_full_4ep.pkl")
+    # predicter = modelWrapper(model_name = "densenet121_full_4ep.pkl")
 
     # * Initialize image upscaler
 
-    upscaler = imageUpscaler()
+    # upscaler = imageUpscaler()
 
     # Script parameters
     scene_n = "01"
@@ -74,11 +75,14 @@ def main():
 
     # Load scene pointcloud
     # TODO maybe it's not always the best to choose the image 0000
-    img_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_imgs/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png"
+    img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/"
+    pose_path  = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/{scene_n}.pose"
+
+    # img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_imgs/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png"
     scene_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd"
     label_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label"
     jsons_path = f"{dataset_path}/jsons"
-
+    
     clustered_pcds_path = f'{os.getenv("SAVI_TP2")}/bin/objs/pcd'
 
     for file in glob.glob(f'{clustered_pcds_path}/*.pcd'):
@@ -107,6 +111,19 @@ def main():
             "10": "background",
         }
 
+    # Load poses file
+    f = open(pose_path,'r')
+    poses = f.read().splitlines()
+
+    # Get available scene images
+    img_paths = glob.glob(img_path + '/*-color.png')
+    n_images = len(img_paths)
+    print(str(n_images) + " images found")
+
+ 
+    # --------------------------------------------------
+    # Execution 
+    # --------------------------------------------------
     original_scene_pcd = o3d.io.read_point_cloud(scene_path)
     scene_pre_processed_checkpoints = []
 
@@ -177,7 +194,12 @@ def main():
     object_operations = dict()
     # scene_operations.view()
 
+    ''' TODO:
+        Leitura das poses
+        listagem das imagens;
+        Transformações;
 
+    '''
     for number, object in enumerate(object_pcds):
         object_operations[number] = PointCloudOperations(object)
 
@@ -193,20 +215,20 @@ def main():
         # * Compute Axis Aligned BBox's on the camera referential
         object_operations[number].computePcdBBox()
 
-        object_operations[number].computeRgbBbox(intrinsics_matrix)
+        object_operations[number].computeRgbBboxs(img_paths, poses, intrinsics_matrix)
 
-        scene_original_rgb = cv2.imread(img_path)
-        scene_gui_rgb = deepcopy(scene_original_rgb)
+        object_operations[number].computeROIs()
 
-        top_left_rgb_bbox = object_operations[number].RgbBBox["min_bound"]
-        bottom_right_rgb_bbox   = object_operations[number].RgbBBox["max_bound"]
+        for img in object_operations[number].rgb_ROIs:
+            pass
+            
+        # top_left_rgb_bbox       = object_operations[number].RgbBBox["min_bound"]
+        # bottom_right_rgb_bbox   = object_operations[number].RgbBBox["max_bound"]
+        # object_operations[number].Rgb_ROI = scene_original_rgb[top_left_rgb_bbox[1]:bottom_right_rgb_bbox[1], top_left_rgb_bbox[0]:bottom_right_rgb_bbox[0]]
 
-
-        object_operations[number].Rgb_ROI = scene_original_rgb[top_left_rgb_bbox[1]:bottom_right_rgb_bbox[1], top_left_rgb_bbox[0]:bottom_right_rgb_bbox[0]]
-
-        cv2.imwrite(f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/LR/1.png',object_operations[number].Rgb_ROI)    
-        upscaler2()
-        image_upscaled = cv2.imread(f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/results/1_rlt.png')
+        # cv2.imwrite(f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/LR/1.png',object_operations[number].Rgb_ROI)    
+        # upscaler2()
+        # image_upscaled = cv2.imread(f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/results/1_rlt.png')
 
 
 
@@ -216,7 +238,7 @@ def main():
         # cv2.waitKey(0)
 
         # print(predicter(image_upscaled,plot = True))
-        print(predicter(object_operations[number].Rgb_ROI,plot = True))
+        # print(predicter(object_operations[number].Rgb_ROI,plot = True))
 
         # cv2.rectangle(scene_gui_rgb,top_left_rgb_bbox, bottom_right_rgb_bbox,(0,0,255),3)
         # # cv2.imshow('Scene', scene_gui_rgb)
