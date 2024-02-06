@@ -220,7 +220,8 @@ def main():
         object_operations[number].computeROIs()
 
         for img in object_operations[number].rgb_ROIs:
-            pass
+            cv2.imshow("obj",img) 
+            cv2.waitKey(0)
             
         # top_left_rgb_bbox       = object_operations[number].RgbBBox["min_bound"]
         # bottom_right_rgb_bbox   = object_operations[number].RgbBBox["max_bound"]

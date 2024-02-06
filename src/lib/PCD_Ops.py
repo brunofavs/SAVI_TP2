@@ -374,22 +374,26 @@ class PointCloudOperations:
             
             RgbBBox = {"min_bound":min_bound,"max_bound":max_bound}
             self.RgbBBoxs.append(RgbBBox)
-            
-        print(self.RgbBBoxs)
    
     def computeROIs(self):
 
         self.rgb_ROIs = []
         for idx, img in enumerate(PointCloudOperations.rgb_images):
 
+            min_bound = self.RgbBBoxs[idx]["min_bound"]
+            max_bound = self.RgbBBoxs[idx]["max_bound"]
+            print(min_bound)
+            print(max_bound)
+            cv2.rectangle(img,())
             cv2.imshow("obj",img) 
             cv2.waitKey(0)
             
-            min_bound = self.RgbBBoxs[idx]["min_bound"]
-            max_bound = self.RgbBBoxs[idx]["max_bound"]
 
             cropped_img  = img[min_bound[1]:max_bound[1], min_bound[0]:max_bound[0]]
             self.rgb_ROIs.append(cropped_img)
+
+            cv2.imshow("obj",cropped_img) 
+            cv2.waitKey(0)
             
 
 
