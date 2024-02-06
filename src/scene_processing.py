@@ -111,7 +111,7 @@ class PointCloudOperations():
 
 
 
-    def transgeom(self,rotation = np.array([0,0,0]),translation = np.array([0,0,0])):
+    def transGeom(self,rotation = np.array([0,0,0]),translation = np.array([0,0,0])):
         
         # Rotate 
         rot = self.gui_pcd.get_rotation_matrix_from_xyz(rotation)
@@ -130,11 +130,16 @@ class PointCloudOperations():
         # Crop point cloud
         self.gui_pcd = self.gui_pcd.crop(bounding_box)
 
-    def filterByIdx(self,idxs = None):
-        if idxs is None:
-            self.gui_pcd = self.gui_pcd.select_by_index(self.vertical_normals_idxs)
+    def filterByIdx(self,idxs = None,inPlace = True):
+        if inPlace:
+            if idxs is None:
+                self.gui_pcd = self.gui_pcd.select_by_index(self.vertical_normals_idxs)
+            else:
+                self.gui_pcd = self.gui_pcd.select_by_index(idxs)
         else:
-            self.gui_pcd = self.gui_pcd.select_by_index(idxs)
+            filtered_pcd = self.gui_pcd.select_by_index(idxs)
+            return filtered_pcd
+
         
     def filterBiggestCluster(self,eps = 0.045,min_points = 50):
 
@@ -145,6 +150,24 @@ class PointCloudOperations():
         dominant_idxs = [index for index,value in enumerate(idxs) if value == dominant_idx]
 
         self.filterByIdx(dominant_idxs) 
+
+    def computeClusters(self,eps = 0.045,min_points = 50):
+
+        print("Computing clusters")
+        self.cluster_idxs = list(self.gui_pcd.cluster_dbscan(eps=eps, min_points=50, print_progress=True))
+        cluster_idx_set   = set(self.cluster_idxs)
+        self.cluster_idxs =  np.array(self.cluster_idxs)
+        cluster_idx_set.discard(-1) # Doesn't raise keyword if there is no noise
+
+        object_point_clouds = []
+
+        for cluster in cluster_idx_set:
+            indexes_matching_cluster = list(np.where(self.cluster_idxs == cluster)[0])
+            object_point_clouds.append(self.filterByIdx(idxs=indexes_matching_cluster,inPlace=False))
+
+
+        print(object_point_clouds)
+        return object_point_clouds
 
     def getDiameter(self):
 
@@ -192,6 +215,12 @@ class PointCloudOperations():
                                           front  =view['trajectory'][0]['front'],
                                           lookat =view['trajectory'][0]['lookat'],
                                           up     =view['trajectory'][0]['up'])
+        
+    def savePCD(self,filename,path):
+        cur_dir = os.getcwd()
+        os.chdir(path)
+
+        o3d.io.write_point_cloud(filename,self.gui_pcd) 
    
 def mostCommon(lst):
     # Converts to set and then tests for each unique element the return value of lst.count(element)
@@ -214,6 +243,8 @@ def main():
     img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
     scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
     label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label'
+
+    clustered_pcds_path = f'{os.getenv("SAVI_TP2")}/bin/objs/pcd'
 
 
     original_scene_pcd = o3d.io.read_point_cloud(scene_path)
@@ -245,7 +276,7 @@ def main():
     camera2table_center = scene_operations.gui_pcd.get_center()
     table_center2camera = camera2table_center * -1
 
-    scene_operations.transgeom(translation=table_center2camera)
+    scene_operations.transGeom(translation=table_center2camera)
 
     #* 2º Step - Find table size to crop and angle to 
     
@@ -271,8 +302,8 @@ def main():
     
     # ! Cannot do translation and rotation at the same time, this is a bug
     # scene_operations.transgeom(rotation=np.array([z_offset_about_x,0,0]),translation = table_center2camera)
-    scene_operations.transgeom(translation = table_center2camera)
-    scene_operations.transgeom(rotation= np.array([z_offset_about_x,0,0]))
+    scene_operations.transGeom(translation = table_center2camera)
+    scene_operations.transGeom(rotation= np.array([z_offset_about_x,0,0]))
 
     #* Both this
     scene_operations.cropPcd(np.array([-radius,-0.5,-radius]),np.array([radius,-0.025,radius*0.7]))
@@ -282,8 +313,24 @@ def main():
     # scene_operations.segment(outliers=True)
 
     # avg_neighbour_distance = scene_operations.computeAvgNearestNeighborDistance()
+    object_pcds = scene_operations.computeClusters(eps = 0.020,min_points=1000)
+    object_operations = dict()
+    # scene_operations.view()
 
-    scene_operations.view()
+    for number,object in enumerate(object_pcds):
+        object_operations[number] = PointCloudOperations(object)
+        
+        # Going back to initial pose for backprojection
+        object_operations[number].transGeom(rotation    = np.array([-z_offset_about_x,0,0]))
+        object_operations[number].transGeom(translation = camera2table_center)
+
+        object_operations[number].savePCD(f'pcd_{number}.pcd',clustered_pcds_path)
+
+        # object_operations[number].view()
+
+
+
+
 
 
 
