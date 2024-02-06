@@ -238,78 +238,6 @@ def objsPtcloudSegmentation(scenes_path,dump_path):
 
     print("Objects pcd saved at " + dump_path + "pcd/")
 
-def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
-    
-    quat_df = [0.451538, -0.0219017, 0.812727, 0.367557]
-    rot = Rotation.from_quat(quat_df)
-    rot_euler = rot.as_euler('xyz', degrees=False)
-    trans =  np.asarray([-0.674774, -0.776193, 1.75478])
-
-    print(rot_euler)
-
-    print("")
-    print('--------------------- Obj Image Croppping --------------------- ')
-
-    #Load image
-    scene_ori = cv2.imread(img_path)
-    scene_gui = deepcopy(scene_ori)
-
-    # Delete existing files
-    for file in glob.glob(objs_path + 'rgb/*.png'):
-        os.remove(file)
-    print('Temporary .png files removed')
-
-    count = 0
-    for obj in objs_props:  
-
-        obj_gui = scene_gui 
-
-        label      = obj[0]
-        centroid_W = obj[1]
-        min_bond_W = obj[2]
-        max_bond_W = obj[3]
-
-        # # Mask background
-        # min_bond_I,_ = cv2.projectPoints(min_bond_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
-        # max_bond_I,_ = cv2.projectPoints(max_bond_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
-        # min_bond_I = [round(num) for num in min_bond_I[0][0][:]]  
-        # max_bond_I = [round(num) for num in max_bond_I[0][0][:]]  
-
-        # masked = np.zeros_like(obj_gui)
-        # masked[min_bond_I[1]:max_bond_I[1],min_bond_I[0]:max_bond_I[0]] = obj_gui[min_bond_I[1]:max_bond_I[1],min_bond_I[0]:max_bond_I[0]]
-
-
-        #Convert world centroid to camera center  
-        # centr_I, _  = cv2.projectPoints(centroid_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
-        centr_I, _  = cv2.projectPoints(centroid_W,rot_euler,trans,intrinsics_matrix,np.zeros((5,1)))
-        centr_I     = centr_I[0][0][:]
-
-        print(centr_I)
-        cv2.circle(scene_gui, (round(centr_I[0]),abs(round(centr_I[1]))), 20, (255,0,0), 2)
-        cv2.imshow('scene', scene_gui)
-        cv2.waitKey(0)
-        continue
-
-        seg_size    = (224,224)
-        start_point =  (round(centr_I[0]-seg_size[0]/2), round(centr_I[1]-seg_size[1]/2))
-        end_point   =  (round(centr_I[0]+seg_size[0]/2), round(centr_I[1]+seg_size[1]/2))
-        
-        # Crop and save image
-        cropped_image = obj_gui[start_point[1]: start_point[1]+seg_size[1], start_point[0]: start_point[0]+seg_size[0]] 
-
-        # Save image
-        cv2.imwrite(objs_path + "rgb/"+label+".png", cropped_image)
-        count = count + 1
-
-        #Draw rectangle on gui image
-        cv2.rectangle(scene_ori,start_point, end_point,(0,0,255),3)
-
-        cv2.imshow('scene', cropped_image)
-        cv2.waitKey(0)
-
-    print("Objects images saved at " + objs_path + "objs/rgb/")
-
-    return scene_ori
 
 def objsPtcloudLabeling(scene_path,objs_path,labels_path):
 
@@ -407,6 +335,78 @@ def objsPtcloudProperties(objs_path):
 
 
     return objs_props
+def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
+    
+    quat_df = [0.451538, -0.0219017, 0.812727, 0.367557]
+    rot = Rotation.from_quat(quat_df)
+    rot_euler = rot.as_euler('xyz', degrees=False)
+    trans =  np.asarray([-0.674774, -0.776193, 1.75478])
+
+    print(rot_euler)
+
+    print("")
+    print('--------------------- Obj Image Croppping --------------------- ')
+
+    #Load image
+    scene_ori = cv2.imread(img_path)
+    scene_gui = deepcopy(scene_ori)
+
+    # Delete existing files
+    for file in glob.glob(objs_path + 'rgb/*.png'):
+        os.remove(file)
+    print('Temporary .png files removed')
+
+    count = 0
+    for obj in objs_props:  
+
+        obj_gui = scene_gui 
+
+        label      = obj[0]
+        centroid_W = obj[1]
+        min_bond_W = obj[2]
+        max_bond_W = obj[3]
+
+        # # Mask background
+        # min_bond_I,_ = cv2.projectPoints(min_bond_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
+        # max_bond_I,_ = cv2.projectPoints(max_bond_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
+        # min_bond_I = [round(num) for num in min_bond_I[0][0][:]]  
+        # max_bond_I = [round(num) for num in max_bond_I[0][0][:]]  
+
+        # masked = np.zeros_like(obj_gui)
+        # masked[min_bond_I[1]:max_bond_I[1],min_bond_I[0]:max_bond_I[0]] = obj_gui[min_bond_I[1]:max_bond_I[1],min_bond_I[0]:max_bond_I[0]]
+
+
+        #Convert world centroid to camera center  
+        centr_I, _  = cv2.projectPoints(centroid_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
+        centr_I     = centr_I[0][0][:]
+
+        print(centr_I)
+        cv2.circle(scene_gui, (round(centr_I[0]),abs(round(centr_I[1]))), 20, (255,0,0), 2)
+        cv2.imshow('scene', scene_gui)
+        cv2.waitKey(0)
+        continue
+
+        seg_size    = (224,224)
+        start_point =  (round(centr_I[0]-seg_size[0]/2), round(centr_I[1]-seg_size[1]/2))
+        end_point   =  (round(centr_I[0]+seg_size[0]/2), round(centr_I[1]+seg_size[1]/2))
+        
+        # Crop and save image
+        cropped_image = obj_gui[start_point[1]: start_point[1]+seg_size[1], start_point[0]: start_point[0]+seg_size[0]] 
+
+        # Save image
+        cv2.imwrite(objs_path + "rgb/"+label+".png", cropped_image)
+        count = count + 1
+
+        #Draw rectangle on gui image
+        cv2.rectangle(scene_ori,start_point, end_point,(0,0,255),3)
+
+        cv2.imshow('scene', cropped_image)
+        cv2.waitKey(0)
+
+    print("Objects images saved at " + objs_path + "objs/rgb/")
+
+    return scene_ori
+
 def main():
 
     # --------------------------------------
@@ -424,7 +424,7 @@ def main():
     
 
     #Load scene pointcloud
-    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00462-color.png'
+    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
     scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
     label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label'
 
@@ -444,11 +444,8 @@ def main():
     objs_props =  objsPtcloudProperties(objs_path)
 
     # # Segment scene image based on centroid locaition
-    image_out = objsImages(img_path,objs_props,intrinsics_matrix,objs_path)
+    objsImages(img_path,objs_props,intrinsics_matrix,objs_path)
     
-    cv2.imshow('scene', image_out)
-    cv2.waitKey(0)
-    exit(0)
 
 
 
