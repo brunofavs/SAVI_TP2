@@ -246,7 +246,6 @@ def main():
     table_center2camera = camera2table_center * -1
 
     scene_operations.transgeom(translation=table_center2camera)
-    scene_operations.view()
 
     #* 2º Step - Find table size to crop and angle to 
     
@@ -275,11 +274,16 @@ def main():
     scene_operations.transgeom(translation = table_center2camera)
     scene_operations.transgeom(rotation= np.array([z_offset_about_x,0,0]))
 
+    #* Both this
     scene_operations.cropPcd(np.array([-radius,-0.5,-radius]),np.array([radius,-0.025,radius*0.7]))
     
+    ##* And this... works, the first works betters, the latter seems more universal
+    # scene_operations.cropPcd(np.array([-radius,-0.5,-radius]),np.array([radius,0,radius]))
+    # scene_operations.segment(outliers=True)
+
     # avg_neighbour_distance = scene_operations.computeAvgNearestNeighborDistance()
 
-
+    scene_operations.view()
 
 
 
