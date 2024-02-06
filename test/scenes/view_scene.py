@@ -5,7 +5,8 @@
 import os
 import open3d as o3d
 import numpy as np
-import glob
+from scipy.spatial.transform import Rotation
+from copy import deepcopy
 
 view = {
 	"class_name" : "ViewTrajectory",
@@ -29,48 +30,42 @@ view = {
 
 def main():
 
+
+
+
     # --------------------------------------
     # Initialization
     # --------------------------------------
 
     dataset_path = os.getenv('SAVI_TP2')+ '/dataset'
-    # scenes_paths = glob.glob(dataset_path + '/rgbd_scenes_v2/pcd/*.pcd')
-    scenes_path = dataset_path +'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd' 
-    scenes_paths = glob.glob(scenes_path + '/*.pcd')
-
+    scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/01.pcd' 
     
-    # Print available scenes
-    available_scenes = []
-    for scenes in scenes_paths:
-        file_name = scenes.split('/')
-        file_name = file_name[-1]
-        available_scenes.append(file_name)
-    print(available_scenes)
-
-    # User input scene select
-    print("File format XX.pcd")
-    scene_n = input("Scene number: ")
-
-
-    filename = f'{scenes_path}/{scene_n}.pcd'
-    print('Loading file '+ filename)
-    ptCloud = o3d.io.read_point_cloud(filename)
-
-    print(ptCloud)
-    print('Points array')
-    print(np.asarray(ptCloud.points))
-    print('Color array')
-    print(np.asarray(ptCloud.colors))
-
-
+    
     # --------------------------------------
     # Execution
     # --------------------------------------
+    ptCloud = o3d.io.read_point_cloud(scene_path)
+
+    seixos_ori = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
+    seixos_gui = deepcopy(seixos_ori)
+
+
+    # 0.451538 -0.0219017 0.812727 0.367557 -0.674774 -0.776193 1.75478 
+    quat_df = [0.451538, -0.0219017, 0.812727, 0.367557]
+    trans =  np.asarray([-0.674774, -0.776193, 1.75478])
+
+    # Rotation
+    rot = seixos_gui.get_rotation_matrix_from_quaternion(quat_df)
+    seixos_gui.rotate(rot, center=(0, 0, 0,))
+    # Translate
+    seixos_gui.translate(trans)
+    
+ 
 
     # --------------------------------------
     # Visualizations
     # --------------------------------------
-    entities = [ptCloud]
+    entities = [ptCloud,seixos_ori,seixos_gui]
     o3d.visualization.draw_geometries(entities,
                                       zoom=view['trajectory'][0]['zoom'],
                                       front=view['trajectory'][0]['front'],

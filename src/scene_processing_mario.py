@@ -317,33 +317,32 @@ def objsPtcloudProperties(objs_path):
         min_bound =  bbox.get_min_bound()
         max_bond  =  bbox.get_max_bound()
 
-        # Save data
-        data = [label, centroid, min_bound, max_bond]
-        objs_props.append(data)
-        
-        # # Print data
-        # print("------ "+ label + " ------")
-        # print("Centroid: "+ str(centroid))
-        # print(bbox)
+        # Generate seixos
+        seixos_ori = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
+        seixos_gui = deepcopy(seixos_ori)
 
-        # axis_aligned_bounding_box = ptCloud_obj.get_axis_aligned_bounding_box()
-        # axis_aligned_bounding_box.color = (1.0,0,0)
+        quat_df = np.asarray([0.451538, -0.0219017, 0.812727, 0.367557])
+        trans =  np.asarray([-0.674774, -0.776193, 1.75478])
+        # Rotation
+        rot = seixos_gui.get_rotation_matrix_from_quaternion(quat_df)
+        seixos_gui.rotate(rot, center=(0, 0, 0,))
+        # Translate
+        seixos_gui.translate(trans)
 
-        # entities = [ptCloud_obj, axis_aligned_bounding_box]
+        entities = [ptCloud_obj, seixos_ori,seixos_gui]
         # o3d.visualization.draw_geometries(entities)
 
+        print("-------- " + str(label)+" -------- ")
+        
+        # Save data
+        data = [label, centroid, min_bound, max_bond, rot, trans]
+        objs_props.append(data)
 
 
     return objs_props
 def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
     
-    quat_df = [0.451538, -0.0219017, 0.812727, 0.367557]
-    rot = Rotation.from_quat(quat_df)
-    rot_euler = rot.as_euler('xyz', degrees=False)
-    trans =  np.asarray([-0.674774, -0.776193, 1.75478])
-
-    print(rot_euler)
-
+   
     print("")
     print('--------------------- Obj Image Croppping --------------------- ')
 
@@ -365,6 +364,10 @@ def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
         centroid_W = obj[1]
         min_bond_W = obj[2]
         max_bond_W = obj[3]
+        rot = obj[4]
+        trans = obj[5]
+
+        print("-------- " + str(label)+" -------- ")
 
         # # Mask background
         # min_bond_I,_ = cv2.projectPoints(min_bond_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
@@ -377,7 +380,8 @@ def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
 
 
         #Convert world centroid to camera center  
-        centr_I, _  = cv2.projectPoints(centroid_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
+        # centr_I, _  = cv2.projectPoints(centroid_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
+        centr_I, _  = cv2.projectPoints(centroid_W,rot,trans,intrinsics_matrix,np.zeros((5,1)))
         centr_I     = centr_I[0][0][:]
 
         print(centr_I)
@@ -424,9 +428,9 @@ def main():
     
 
     #Load scene pointcloud
-    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
+    img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00462-color.png'
     scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
-    label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label'
+    label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/{scene_n}.label'
 
     # Path to Dump objects pcd and images
     # objs_path = dataset_path + '../bin/objs/'
