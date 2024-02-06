@@ -333,7 +333,7 @@ def objsPtcloudProperties(objs_path):
         # o3d.visualization.draw_geometries(entities)
 
         print("-------- " + str(label)+" -------- ")
-        
+        print("ptCloud Centroid: "+str(centroid))
         # Save data
         data = [label, centroid, min_bound, max_bond, rot, trans]
         objs_props.append(data)
