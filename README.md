@@ -27,18 +27,18 @@
 
 <!-- PROJECT LOGO -->
 <br />
-
+<!-- 
   <a href="https://github.com/brunofavs/SAVI_TP1/graphs/">
     <img src="docs/LOGO.png" alt="Logo" width="550" height="350">
-  </a>
+  </a> -->
 
-<h3 align="center">Trabalho Prático 1</h3>
+<h3 align="center">Trabalho Prático 2</h3>
 
 <h2><b> Repository Owner: Bruno Silva 98374
-<br>Collaborators: Alexandre Carola 98365 & Pedro Martins 103800</b></h2>
+<br>Collaborators: Mário Vasconcelos 84081</b></h2>
 
   <p align="center">
-    This repository was created for evaluation at Industrial Vision Advanced Systems "SAVI 23-24 Trabalho prático 1".
+    This repository was created for evaluation at Industrial Vision Advanced Systems "SAVI 23-24 Trabalho prático 2".
     <br />
     <!-- <a href="https://github.com/brunofavs/SAVI_TP1"><strong>Explore the Wiki »</strong></a> -->
     <br >
@@ -81,7 +81,7 @@
 </div>
 <br>
 
-This assignment was developed for Advanced Systems of Industrial Vision. It is a face recognition with tracking program of multiple people simultaneously, utilizing Python's OpenCV. Some features of a database and an interface, human-machine (using both visual and audio communication) were also implemented.
+This assignment was developed for Advanced Systems of Industrial Vision. It was a project to learn point cloud and image manipulation as well as classifier Neural Networks.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -105,14 +105,8 @@ This assignment was developed for Advanced Systems of Industrial Vision. It is a
 <!-- Objectives -->
 ## Objectives
 
-This Python program is meant to execute an intelligent system that receives a webcam stream coming from the computer and searches to fulfill the following topics:
+This project is capable of extracting objects from a Point Cloud of a scene, classify them and extract their features, such as height or color. The model was trained with the Washington Dataset, so it is better suited for classifying household objects.
 
-- Detect human faces everytime someone approaches the camera;
-- Detect multiple faces simultaneously, using either a pre-recorded database or a consistently updated one that starts it's training since the first start;
-- Visualize the realtime database thats being used;
-- Identify known detected faces, and ask about unknown ones;
-- Greets known faces with 'Hello', followed by the person's name, and asks about the unknown one's name;
-- Tracks the known detected faces even if they're unrecognizable. 
 <br>
 <br>
 
@@ -133,13 +127,6 @@ This is a Python file, so it should be ran in a dedicated terminal running main.
 
 To run the program, the following libraries should be installed:
 ```
-sudo apt install python3 python3-tk
-sudo apt install python3-pip
-pip install pygame
-pip install gtts
-pip install opencv-python
-pip install imutils
-pip install numpy
 ```
 
 
@@ -152,12 +139,6 @@ pip install numpy
 
 
 Run main.py:
-- Show your beautiful face to the camera;
-
-
-
-- When prompted to, write your name and press save or hit Enter, it shall now detect your face, identify it, and track it even when you get obstructed by something or leave the camera FOV and come out on the opposite side;
-
 <br>
 <br>
 <div align="center">
@@ -210,19 +191,11 @@ Arguments when running main.py:
 
 <!-- CONTACT -->
 ## Contact
-Alexandre Carola - amcc@ua.pt
-
 
 Bruno Silva - bruno.favs@ua.pt
 
-
-Pedro Martins - pedro.mestre@ua.pt
-
-Project Link: [Trabalho Prático 1](https://github.com/brunofavs/SAVI_TP1)
-
+Mário Vasconcelos - mario.vasconcelos@ua.pt
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
