@@ -17,6 +17,9 @@ def main():
 
     image_filenames = [file for file in image_filenames if "crop" in file and "depth" not in file and "mask" not in file]
 
+    items = ["bowl","cap","cereal_box","coffee_mug","soda_can"]
+    image_filenames = [file for file in image_filenames if any(item in file for item in items)]
+    
 
     # Use a rule of 70% train, 20% validation, 10% test
 
@@ -37,7 +40,7 @@ def main():
     # Writing to sample.json
 
     os.chdir(f'{os.getenv("SAVI_TP2")}/dataset/jsons')
-    with open("rgb_images_filenames.json", "w") as outfile:
+    with open("rgb_images_filenames_mini.json", "w") as outfile:
         outfile.write(json_object)
 
 
