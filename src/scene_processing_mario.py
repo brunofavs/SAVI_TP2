@@ -311,33 +311,56 @@ def objsPtcloudProperties(objs_path):
 
         # Data from pointcloud
         label = obj_pcd[:-4]
-        centroid = ptCloud_obj.get_center()
+        centroid_W = ptCloud_obj.get_center()
         bbox     = ptCloud_obj.get_axis_aligned_bounding_box()
 
         min_bound =  bbox.get_min_bound()
         max_bond  =  bbox.get_max_bound()
 
+        print("-------- " + str(label)+" -------- ")
+
         # Generate seixos
         seixos_ori = o3d.geometry.TriangleMesh().create_coordinate_frame(size=0.5, origin=np.array([0., 0., 0.]))
         seixos_gui = deepcopy(seixos_ori)
+        
 
-        quat_df = np.asarray([0.451538, -0.0219017, 0.812727, 0.367557])
-        trans =  np.asarray([-0.674774, -0.776193, 1.75478])
+        # 0.449246 -0.0213099 0.813616 0.368433 -0.66902 -0.779701 1.75719  Line 463
+        quat_df = np.asarray([0.449246, -0.0213099, 0.813616, 0.368433])
+        trans =  np.asarray([-0.66902, -0.779701, 1.75719])
         # Rotation
         rot = seixos_gui.get_rotation_matrix_from_quaternion(quat_df)
         seixos_gui.rotate(rot, center=(0, 0, 0,))
         # Translate
         seixos_gui.translate(trans)
 
+        # Pose matrix    
+        WTP = np.zeros((4,4), dtype = float)
+        WTP[3,3] = 1
+        WTP[0:3,0:3] = rot
+        WTP[0:3,3]   = trans
+
+        PTW = np.linalg.inv(WTP)
+
+
+        print("Wrld centroid: " + str(centroid_W))
+        # Shape to homogenic coordinate
+        centroid_P = np.append(centroid_W,1)
+        centroid_P = centroid_P.reshape(-1,1)
+
+        # Apply transformation to point
+        centroid_P = np.dot(PTW,centroid_P)
+        centroid_P = np.reshape(centroid_P, (1,4))
+        centroid_P = centroid_P[0][:-1]        
+        print("Pose Centroid: "+str(centroid_P))
+
+        # Visualization
         entities = [ptCloud_obj, seixos_ori,seixos_gui]
-        # o3d.visualization.draw_geometries(entities)
+        o3d.visualization.draw_geometries(entities)
 
-        print("-------- " + str(label)+" -------- ")
-        
+   
         # Save data
-        data = [label, centroid, min_bound, max_bond, rot, trans]
+        data = [label, centroid_W,centroid_P, min_bound, max_bond, rot, trans]
         objs_props.append(data)
-
 
     return objs_props
 def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
@@ -360,15 +383,17 @@ def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
 
         obj_gui = scene_gui 
 
-        label      = obj[0]
-        centroid_W = obj[1]
-        min_bond_W = obj[2]
-        max_bond_W = obj[3]
-        rot = obj[4]
-        trans = obj[5]
-
+        label       = obj[0]
+        centroid_W  = obj[1]
+        centroid_P  = obj[2]
+        rot         = obj[3]
+        trans       = obj[4]
         print("-------- " + str(label)+" -------- ")
 
+    
+       
+        # new_centroid = np.dot(T, cent_h)
+         
         # # Mask background
         # min_bond_I,_ = cv2.projectPoints(min_bond_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
         # max_bond_I,_ = cv2.projectPoints(max_bond_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
@@ -380,11 +405,11 @@ def objsImages(img_path,objs_props,intrinsics_matrix,objs_path):
 
 
         #Convert world centroid to camera center  
-        # centr_I, _  = cv2.projectPoints(centroid_W,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
-        centr_I, _  = cv2.projectPoints(centroid_W,rot,trans,intrinsics_matrix,np.zeros((5,1)))
+        centr_I, _  = cv2.projectPoints(centroid_P,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
+        # centr_I, _  = cv2.projectPoints(centroid_W,rot,trans,intrinsics_matrix,np.zeros((5,1)))
         centr_I     = centr_I[0][0][:]
 
-        print(centr_I)
+        print("Img centroid: " + str(centr_I))
         cv2.circle(scene_gui, (round(centr_I[0]),abs(round(centr_I[1]))), 20, (255,0,0), 2)
         cv2.imshow('scene', scene_gui)
         cv2.waitKey(0)
@@ -429,6 +454,7 @@ def main():
 
     #Load scene pointcloud
     img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00462-color.png'
+    # img_path   = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png'
     scene_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd' 
     label_path = dataset_path + f'/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/{scene_n}.label'
 
