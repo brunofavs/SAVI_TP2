@@ -17,6 +17,23 @@ def mostCommon(lst):
     # Without converting to set would still work but would be a lot less efficient
     return max(set(lst), key=lst.count)
 
+def quaternion_to_euler_matrix(q):
+    rotation_matrix = np.zeros((3, 3))
+    q0, q1, q2, q3 = q
+
+    rotation_matrix[0, 0] = 1 - 2*(q2**2 + q3**2)
+    rotation_matrix[0, 1] = 2*(q1*q2 - q0*q3)
+    rotation_matrix[0, 2] = 2*(q1*q3 + q0*q2)
+
+    rotation_matrix[1, 0] = 2*(q1*q2 + q0*q3)
+    rotation_matrix[1, 1] = 1 - 2*(q1**2 + q3**2)
+    rotation_matrix[1, 2] = 2*(q2*q3 - q0*q1)
+
+    rotation_matrix[2, 0] = 2*(q1*q3 - q0*q2)
+    rotation_matrix[2, 1] = 2*(q2*q3 + q0*q1)
+    rotation_matrix[2, 2] = 1 - 2*(q1**2 + q2**2)
+
+    return rotation_matrix
 
 class PointCloudOperations:
 
@@ -284,7 +301,7 @@ class PointCloudOperations:
         self.axisAlignedBBox = {"min_bound":min_bound,"max_bound":max_bound}
 
     def computeRGB_projection(self,point,intrinsics_matrix,extrinsics_matrix = 0):
-            # Check if variable is a list
+        # Check if variable is a list
         assert isinstance(point, list), "Variable is not a list"
         
         # Check if the list has exactly 3 elements
@@ -297,16 +314,82 @@ class PointCloudOperations:
         point = np.array(point)
 
         rgb_image_point,_ = cv2.projectPoints(point,np.zeros((3,1)),np.zeros((3,1)),intrinsics_matrix,np.zeros((5,1)))
-
         rgb_image_point = rgb_image_point.flatten()
-        
+    
         return rgb_image_point.astype(int)
 
-    def computeRgbBbox(self,intrinsics_matrix):
-        min_bound = self.computeRGB_projection(self.axisAlignedBBox["min_bound"],intrinsics_matrix)
-        max_bound = self.computeRGB_projection(self.axisAlignedBBox["max_bound"],intrinsics_matrix)
+    def computeRgbBboxs(self,img_paths, poses,intrinsics_matrix):
 
-        self.RgbBBox = {"min_bound":min_bound,"max_bound":max_bound}
+        n_divs = 10
+        n_images = len(img_paths)
 
-    def transformVoxel2Frame(self,point,extrinsic_matrix,camera_extrinsics):
-        pass
+        PointCloudOperations.rgb_images = []
+
+        
+        self.RgbBBoxs = []
+        for img_path in img_paths[::round(n_images/n_divs)]:
+            
+            img = cv2.imread(img_path)
+            PointCloudOperations.rgb_images.append(img)
+
+            img_numb =  int(img_path[-15:-10])
+            pose = poses[img_numb][:]
+
+            # Split line by " "
+            pose = pose.split()
+            # Convert to int
+            pose = [float(i) for i in pose]
+
+            # Pose matrix    
+            WTP          = np.eye(4, dtype = float)
+            WTP[3,3]     = 1
+            WTP[0:3,0:3] = quaternion_to_euler_matrix(pose[0:4])
+            WTP[0:3,3]   = pose[4:7]
+            PTW = np.linalg.inv(WTP)
+
+            min_bound_pcd_W = self.axisAlignedBBox["min_bound"]
+            # Shape to homogenic coordinate
+            min_bound_pcd_P = np.append(min_bound_pcd_W,1)
+            min_bound_pcd_P = min_bound_pcd_P.reshape(-1,1)
+
+            # Apply transformation to point
+            min_bound_pcd_P = np.dot(PTW,min_bound_pcd_P)
+            min_bound_pcd_P = np.reshape(min_bound_pcd_P, (1,4))
+            min_bound_pcd_P = min_bound_pcd_P[0][:-1]   
+           
+            # -------------------------------
+            max_bound_pcd_W = self.axisAlignedBBox["max_bound"]
+            # Shape to homogenic coordinate
+            max_bound_pcd_P = np.append(max_bound_pcd_W,1)
+            max_bound_pcd_P = max_bound_pcd_P.reshape(-1,1)
+
+            # Apply transformation to point
+            max_bound_pcd_P = np.dot(PTW,max_bound_pcd_P)
+            max_bound_pcd_P = np.reshape(max_bound_pcd_P, (1,4))
+            max_bound_pcd_P = max_bound_pcd_P[0][:-1] 
+
+
+            min_bound = self.computeRGB_projection(list(min_bound_pcd_P),intrinsics_matrix)    
+            max_bound = self.computeRGB_projection(list(max_bound_pcd_P),intrinsics_matrix)
+            
+            RgbBBox = {"min_bound":min_bound,"max_bound":max_bound}
+            self.RgbBBoxs.append(RgbBBox)
+            
+        print(self.RgbBBoxs)
+   
+    def computeROIs(self):
+
+        self.rgb_ROIs = []
+        for idx, img in enumerate(PointCloudOperations.rgb_images):
+
+            cv2.imshow("obj",img) 
+            cv2.waitKey(0)
+            
+            min_bound = self.RgbBBoxs[idx]["min_bound"]
+            max_bound = self.RgbBBoxs[idx]["max_bound"]
+
+            cropped_img  = img[min_bound[1]:max_bound[1], min_bound[0]:max_bound[0]]
+            self.rgb_ROIs.append(cropped_img)
+            
+
+
