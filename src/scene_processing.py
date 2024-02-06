@@ -58,7 +58,8 @@ def main():
 
     #* Initialize model wrapper
 
-    predicter = modelWrapper(model_name = "densenet121_full_4ep.pkl")
+    # predicter = modelWrapper(model_name = "densenet121_full_4ep.pkl")
+    predicter = modelWrapper(model_name = "densenet121_mini_10_ep.pkl",matchings_name="rgb_images_matchings_mini.json")
 
     # * Initialize image upscaler
 
