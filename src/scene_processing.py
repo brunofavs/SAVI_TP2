@@ -13,10 +13,12 @@ import cv2
 import json
 
 from lib.PCD_Ops import *
+from lib.googleTtS import text2Speech
 from rgb_model_wrapper import modelWrapper
 
 from lib.ESRGAN_upscaler.upscaler_adapted import imageUpscaler
 from lib.ESRGAN_upscaler.test import upscaler2
+
 
 view = {
     "class_name": "ViewTrajectory",
@@ -45,6 +47,7 @@ view = {
     "version_minor": 0,
 }
 
+
 def flatten_list(nested_list):
     flattened_list = []
     for item in nested_list:
@@ -67,7 +70,7 @@ def main():
     # upscaler = imageUpscaler()
 
     # Script parameters
-    scene_n = "01"
+    scene_n = "02"
     dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
 
     # Load Camera Intrinsics
@@ -79,6 +82,8 @@ def main():
     img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/"
     pose_path  = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/{scene_n}.pose"
 
+    # Bruno
+    img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_imgs/rgbd-scenes-v2/imgs/scene_{scene_n}/"
     # img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_imgs/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png"
     scene_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd"
     label_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label"
@@ -218,39 +223,31 @@ def main():
 
         object_operations[number].computeRgbBboxs(img_paths, poses, intrinsics_matrix)
 
+        object_operations[number].computeProperties()
+
         object_operations[number].computeROIs()
 
-        for img in object_operations[number].rgb_ROIs:
-            pass
+        # for img in object_operations[number].rgb_ROIs:
+        #     pass
             
-        # top_left_rgb_bbox       = object_operations[number].RgbBBox["min_bound"]
-        # bottom_right_rgb_bbox   = object_operations[number].RgbBBox["max_bound"]
-        # object_operations[number].Rgb_ROI = scene_original_rgb[top_left_rgb_bbox[1]:bottom_right_rgb_bbox[1], top_left_rgb_bbox[0]:bottom_right_rgb_bbox[0]]
 
         # cv2.imwrite(f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/LR/1.png',object_operations[number].Rgb_ROI)    
         # upscaler2()
         # image_upscaled = cv2.imread(f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/results/1_rlt.png')
-
-
 
         # cv2.imshow("UPSCALE",image_upscaled)
         # cv2.imshow("scale",object_operations[number].Rgb_ROI)
         # cv2.imshow("scale",scene_gui_rgb) 
         # cv2.waitKey(0)
 
-        # print(predicter(image_upscaled,plot = True))
+        # object_operations[number].type = predicter(image_upscaled,plot = True)
+        # print(object_operations[number].type)
         # print(predicter(object_operations[number].Rgb_ROI,plot = True))
 
-        # cv2.rectangle(scene_gui_rgb,top_left_rgb_bbox, bottom_right_rgb_bbox,(0,0,255),3)
-        # # cv2.imshow('Scene', scene_gui_rgb)
-        # cv2.imshow("ROI",object_operations[number].Rgb_ROI)
-        # cv2.waitKey(0)
+        object_operations[number].describe()
+        object_operations[number].view()
 
 
-
-
-
-        # object_operations[number].view()
 
 
 

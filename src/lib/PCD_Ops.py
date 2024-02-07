@@ -12,6 +12,8 @@ import os
 import cv2
 import json
 
+from lib.googleTtS import text2Speech
+
 def mostCommon(lst):
     # Converts to set and then tests for each unique element the return value of lst.count(element)
     # Without converting to set would still work but would be a lot less efficient
@@ -35,6 +37,36 @@ def quaternion_to_euler_matrix(q):
 
     return rotation_matrix
 
+def mapRgbToColorName(rgb):
+    r, g, b = rgb
+
+    if r > 0.9 and g > 0.9 and b < 0.1:
+        return "yellow"
+    elif r > 0.9 and g < 0.1 and b < 0.1:
+        return "red"
+    elif r < 0.1 and g > 0.9 and b < 0.1:
+        return "green"
+    elif r < 0.1 and g < 0.1 and b > 0.9:
+        return "blue"
+    elif r > 0.9 and g > 0.5 and b < 0.1:
+        return "orange"
+    elif r > 0.9 and g < 0.1 and b > 0.9:
+        return "purple"
+    elif r < 0.1 and g > 0.9 and b > 0.9:
+        return "cyan"
+    elif r > 0.9 and g > 0.9 and b > 0.9:
+        return "white"
+    elif r < 0.1 and g < 0.1 and b < 0.1:
+        return "black"
+    elif r > 0.5 and g > 0.5 and b < 0.1:
+        return "brown"
+    elif r > 0.5 and g < 0.1 and b > 0.5:
+        return "magenta"
+    elif r < 0.1 and g > 0.5 and b > 0.5:
+        return "turquoise"
+    else:
+        return "unknown"
+
 class PointCloudOperations:
 
     def __init__(self, pcd,perspective = None):
@@ -42,6 +74,7 @@ class PointCloudOperations:
         self.gui_pcd = deepcopy(self.original_pcd)
         self.verticality_threshold = 0.05
         self.perspective = perspective
+        self.type = None
 
         print("Original PCD has: " + str(len(self.gui_pcd.points)) + " points")
 
@@ -288,6 +321,32 @@ class PointCloudOperations:
         os.chdir(path)
 
         o3d.io.write_point_cloud(filename, self.gui_pcd)
+        # cv2.rectangle(scene_gui_rgb,top_left_rgb_bbox, bottom_right_rgb_bbox,(0,0,255),3)
+        # # cv2.imshow('Scene', scene_gui_rgb)
+        # cv2.imshow("ROI",object_operations[number].Rgb_ROI)
+        # cv2.waitKey(0)
+
+    def describe(self):
+        text = f'''This object is a {self.type}, and its dimensions are {self.dimensions}, and its color is {mapRgbToColorName(self.average_color)} '''
+        print(text)
+        text2Speech(text)
+
+
+
+        
+
+    def computeProperties(self):
+
+        cloud_colors = np.asarray(self.gui_pcd.colors)
+        self.average_color  = np.round(np.mean(cloud_colors, axis=0),decimals=2)
+        print('Average Color: ' + str(self.average_color))
+
+        # Dimensions
+        min_bound = self.gui_pcd.get_min_bound()
+        max_bound = self.gui_pcd.get_max_bound()
+        self.dimensions = np.round((max_bound - min_bound),decimals=2)
+        print('Dimentions:'+ str(self.dimensions))
+
     
     def computePcdBBox(self):
 
@@ -390,6 +449,7 @@ class PointCloudOperations:
 
             cropped_img  = img[min_bound[1]:max_bound[1], min_bound[0]:max_bound[0]]
             self.rgb_ROIs.append(cropped_img)
+
             
 
 
