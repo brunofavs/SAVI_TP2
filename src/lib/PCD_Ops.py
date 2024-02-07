@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 
+import webcolors
 import open3d as o3d
 import numpy as np
 import glob
@@ -37,35 +38,23 @@ def quaternion_to_euler_matrix(q):
 
     return rotation_matrix
 
-def mapRgbToColorName(rgb):
-    r, g, b = rgb
+def closest_colour(requested_colour):
+    min_colours = {}
+    for key, name in webcolors.CSS3_HEX_TO_NAMES.items():
+        r_c, g_c, b_c = webcolors.hex_to_rgb(key)
+        rd = (r_c - requested_colour[0]) ** 2
+        gd = (g_c - requested_colour[1]) ** 2
+        bd = (b_c - requested_colour[2]) ** 2
+        min_colours[(rd + gd + bd)] = name
+    return min_colours[min(min_colours.keys())]
 
-    if r > 0.9 and g > 0.9 and b < 0.1:
-        return "yellow"
-    elif r > 0.9 and g < 0.1 and b < 0.1:
-        return "red"
-    elif r < 0.1 and g > 0.9 and b < 0.1:
-        return "green"
-    elif r < 0.1 and g < 0.1 and b > 0.9:
-        return "blue"
-    elif r > 0.9 and g > 0.5 and b < 0.1:
-        return "orange"
-    elif r > 0.9 and g < 0.1 and b > 0.9:
-        return "purple"
-    elif r < 0.1 and g > 0.9 and b > 0.9:
-        return "cyan"
-    elif r > 0.9 and g > 0.9 and b > 0.9:
-        return "white"
-    elif r < 0.1 and g < 0.1 and b < 0.1:
-        return "black"
-    elif r > 0.5 and g > 0.5 and b < 0.1:
-        return "brown"
-    elif r > 0.5 and g < 0.1 and b > 0.5:
-        return "magenta"
-    elif r < 0.1 and g > 0.5 and b > 0.5:
-        return "turquoise"
-    else:
-        return "unknown"
+def get_colour_name(requested_colour):
+    try:
+        closest_name = actual_name = webcolors.rgb_to_name(requested_colour)
+    except ValueError:
+        closest_name = closest_colour(requested_colour)
+        actual_name = None
+    return actual_name, closest_name
 
 class PointCloudOperations:
 
@@ -327,7 +316,7 @@ class PointCloudOperations:
         # cv2.waitKey(0)
 
     def describe(self):
-        text = f'''This object is a {self.type}, and its dimensions are {self.dimensions}, and its color is {mapRgbToColorName(self.average_color)} '''
+        text = f'''This object is a {self.type}, and its dimensions are {self.dimensions}, and its color is {get_colour_name(self.average_color)} '''
         print(text)
         text2Speech(text)
 
@@ -339,6 +328,10 @@ class PointCloudOperations:
 
         cloud_colors = np.asarray(self.gui_pcd.colors)
         self.average_color  = np.round(np.mean(cloud_colors, axis=0),decimals=2)
+
+        self.average_color = (self.average_color * 255)
+        self.average_color.astype(int)
+
         print('Average Color: ' + str(self.average_color))
 
         # Dimensions
@@ -488,23 +481,26 @@ class PointCloudOperations:
         width = max(width, height)
         height = width
 
-        print("width: " + str(width))
-        print("height: " + str(height))
+        # print(width)
+        # print(height)
 
+        # print("width: " + str(width))
+        # print("height: " + str(height))
 
+        
 
         self.rgb_ROIs = []
         for idx, img in enumerate(PointCloudOperations.rgb_images):
 
             centroid = self.RGBCentroids[idx]
-            print("Centroid: " + str(centroid))
+            # print("Centroid: " + str(centroid))
             # cv2.circle(img,centroid,20,(255,0,0),2)
 
-            top_corn = [round((centroid[0]-width/2)),round((centroid[1]-height/2))]
-            bot_corn = [round((centroid[0]+width/2)),round((centroid[1]+height/2))]
+            top_corn = [max(round((centroid[0]-width/2)),0),max(round((centroid[1]-height/2)),0)]
+            bot_corn = [max(round((centroid[0]+width/2)),0),max(round((centroid[1]+height/2)),0)]
             
-            print("Top corner: " + str(top_corn))
-            print("Bot corner: " + str(bot_corn))
+            # print("Top corner: " + str(top_corn))
+            # print("Bot corner: " + str(bot_corn))
             cropped_img = img[top_corn[1]:bot_corn[1],top_corn[0]:bot_corn[0]]
             self.rgb_ROIs.append(cropped_img)
 

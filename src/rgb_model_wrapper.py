@@ -23,6 +23,14 @@ from lib.NN.RGB.rgb_dataset import DatasetRGB
 from lib.NN.RGB.model_architectures.classes_model import Model
 from lib.NN.RGB.rgb_trainer import Trainer
 
+def flatten_list(nested_list):
+    flattened_list = []
+    for item in nested_list:
+        if isinstance(item, list):
+            flattened_list.extend(flatten_list(item))
+        else:
+            flattened_list.append(item)
+    return flattened_list
 
 class modelWrapper:
 
@@ -72,7 +80,7 @@ class modelWrapper:
             [transforms.Resize((224, 224)), transforms.ToTensor()]
         )
 
-    def __call__(self, cv_img, plot=False):
+    def __call__(self, cv_img, plot=False,output_prob = False):
 
         # Converting cv2 image to PIL
         color_coverted = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
@@ -90,7 +98,7 @@ class modelWrapper:
         # Apply softmax to convert logits into probabilities
         probabilities = F.softmax(labels_predicted, dim=1)
 
-        # Get the predicted class label (index of the maximum probability)
+       # Get the predicted class label (index of the maximum probability)
         predicted_label_index = torch.argmax(probabilities, dim=1)
 
         # Get the corresponding label name
@@ -101,7 +109,45 @@ class modelWrapper:
             plt.title(predicted_label_name)
             plt.show()
 
+        return predicted_label_name if not output_prob else flatten_list(probabilities.tolist())
+    
+    def averageGuess(self,img_list,plot = False):
+        
+        probabilities_list = np.zeros(self.num_classes)
+
+        for img in img_list:
+            try:
+                probabilities_list = np.add(probabilities_list,self(img,output_prob = True))
+            except:
+                continue
+
+       # Get the predicted class label (index of the maximum probability)
+        print(probabilities_list)
+        predicted_label_index = np.argmax(probabilities_list)
+
+        # print(predicted_label_index)
+
+        # Get the corresponding label name
+        predicted_label_name = self.label_idx2names[predicted_label_index]
+
+        print(f'Predicted object type is {predicted_label_name}')
+
+        if plot:
+
+            fig, axes = plt.subplots(1,5)
+            # Plot images on subplots
+
+            for idx,img in enumerate(img_list[0:5]):
+                plt.subplot(1, 5, idx+1)
+                plt.imshow(cv2.cvtColor(img_list[idx],cv2.COLOR_BGR2RGB))
+                plt.axis('off')
+                plt.title(predicted_label_name)
+
+            plt.show()
+
         return predicted_label_name
+
+        
 
 
 def main():

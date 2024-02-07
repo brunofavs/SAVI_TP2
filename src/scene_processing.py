@@ -11,6 +11,9 @@ from matplotlib import cm
 import os
 import cv2
 import json
+import argparse
+
+import matplotlib.pyplot as plt
 
 from lib.PCD_Ops import *
 from lib.googleTtS import text2Speech
@@ -18,6 +21,21 @@ from rgb_model_wrapper import modelWrapper
 
 from lib.ESRGAN_upscaler.upscaler_adapted import imageUpscaler
 from lib.ESRGAN_upscaler.test import upscaler2
+
+"""'
+TODO
+
+# ///add suplots with all imgs to plot shower in model done
+
+# ///use cmd line arguments to turn on upscale - done
+
+beautify?
+
+colorama nos coments
+
+plot loss/epoch
+
+"""
 
 
 view = {
@@ -60,47 +78,67 @@ def flatten_list(nested_list):
 
 def main():
 
-    #* Initialize model wrapper
+    # * ---Configuration of argparse----
+    parser = argparse.ArgumentParser(description="Scene Describer")
+    parser.add_argument(
+        "-pNN", "--plotNN", action="store_true", help="Plots NN Classification"
+    )
+    parser.add_argument(
+        "-us", "--upscale", action="store_true", help="Use Upscale for ROIs"
+    )
+    parser.add_argument(
+        "-s", "--scene", type=str, required=False, default="01", help="Chooses scene"
+    )
+    args = vars(parser.parse_args())
+    # * Initialize model wrapper
 
     # predicter = modelWrapper(model_name = "densenet121_full_4ep.pkl")
-    # predicter = modelWrapper(model_name = "densenet121_mini_10_ep.pkl",matchings_name="rgb_images_matchings_mini.json")
+    predicter = modelWrapper(
+        model_name="densenet121_mini_10_ep.pkl",
+        matchings_name="rgb_images_matchings_mini.json",
+    )
 
     # * Initialize image upscaler
 
-    # upscaler = imageUpscaler()
+    upscaler = imageUpscaler()
 
     # Script parameters
-    scene_n = "02"
     dataset_path = f'{os.getenv("SAVI_TP2")}/dataset'
+    # scene_n = "02"
+    # use_upscale = False
+    # plot_NN = False
+
+    scene_n = args["scene"]
+    use_upscale = args["upscale"]
+    plot_NN = args["plotNN"]
 
     # Load Camera Intrinsics
     with open(f'{os.getenv("SAVI_TP2")}/src/jsons/intrinsic.json', "r") as f:
         intrinsics_matrix = np.asarray(json.load(f))
 
     # Load scene pointcloud
-    # TODO maybe it's not always the best to choose the image 0000
-    img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/"
-    pose_path  = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/{scene_n}.pose"
+    # img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/imgs/scene_{scene_n}/"
+    pose_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/{scene_n}.pose"
 
     # Bruno
-    img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_imgs/rgbd-scenes-v2/imgs/scene_{scene_n}/"
+    img_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_imgs/rgbd-scenes-v2/imgs/scene_{scene_n}/"
     # img_path   = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_imgs/rgbd-scenes-v2/imgs/scene_{scene_n}/00000-color.png"
     scene_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc/pcd/{scene_n}.pcd"
     label_path = f"{dataset_path}/scenes_dataset_v2/rgbd-scenes-v2_pc/rgbd-scenes-v2/pc//{scene_n}.label"
     jsons_path = f"{dataset_path}/jsons"
-    
+
     clustered_pcds_path = f'{os.getenv("SAVI_TP2")}/bin/objs/pcd'
 
-    for file in glob.glob(f'{clustered_pcds_path}/*.pcd'):
+    for file in glob.glob(f"{clustered_pcds_path}/*.pcd"):
         os.remove(file)
-    print('Temporary .pcd files removed')
+    print("Temporary .pcd files removed")
 
     with open(label_path, "r") as f:
         scene_labels = f.read().splitlines()
-        scene_labels.pop(0) # Remove first item of label list
+        scene_labels.pop(0)  # Remove first item of label list
 
     try:
-        with open(f'{jsons_path}/scene_labeling_matchings.json', "r") as f:
+        with open(f"{jsons_path}/scene_labeling_matchings.json", "r") as f:
             scene_label_dict = json.load(f)
     except:
         print(f"No scene labeling dictionary found, using defaults")
@@ -118,17 +156,16 @@ def main():
         }
 
     # Load poses file
-    f = open(pose_path,'r')
+    f = open(pose_path, "r")
     poses = f.read().splitlines()
 
     # Get available scene images
-    img_paths = glob.glob(img_path + '/*-color.png')
+    img_paths = glob.glob(img_path + "/*-color.png")
     n_images = len(img_paths)
     print(str(n_images) + " images found")
 
- 
     # --------------------------------------------------
-    # Execution 
+    # Execution
     # --------------------------------------------------
     original_scene_pcd = o3d.io.read_point_cloud(scene_path)
     scene_pre_processed_checkpoints = []
@@ -136,7 +173,7 @@ def main():
     # ? Segmenting other scenes doesn't work as well
     # * 1º Step - Find table center
 
-    scene_operations = PointCloudOperations(original_scene_pcd,perspective=view)
+    scene_operations = PointCloudOperations(original_scene_pcd, perspective=view)
     scene_operations.pre_process(voxelsize=0.004)
 
     # Filter horizontal planes
@@ -200,17 +237,19 @@ def main():
     object_operations = dict()
     # scene_operations.view()
 
-    ''' TODO:
+    """ TODO:
         Leitura das poses
         listagem das imagens;
         Transformações;
 
-    '''
+    """
     for number, object in enumerate(object_pcds):
         object_operations[number] = PointCloudOperations(object)
 
         # Going back to initial pose for backprojection
-        object_operations[number].transGeom(rotation=np.array([-z_offset_about_x, 0, 0]))
+        object_operations[number].transGeom(
+            rotation=np.array([-z_offset_about_x, 0, 0])
+        )
         object_operations[number].transGeom(translation=camera2table_center)
         # ! Not working
         # object_operations[number].associateGT(scene_lobels,scene_label_dict,scene_operations.original_pcd)
@@ -219,42 +258,86 @@ def main():
         object_operations[number].savePCD(f"pcd_{number}.pcd", clustered_pcds_path)
 
         # * Compute Axis Aligned BBox's on the camera referential
-        object_operations[number].computeImages(img_paths, n_divs = 10)
+        object_operations[number].computeImages(img_paths, n_divs=10)
 
         object_operations[number].computePcdBBox()
         object_operations[number].computeRgbBboxs(img_paths, poses, intrinsics_matrix)
-        
 
         object_operations[number].computePcdCentroid()
-        object_operations[number].computeRGBCentroid(img_paths, poses, intrinsics_matrix)
-
+        object_operations[number].computeRGBCentroid(
+            img_paths, poses, intrinsics_matrix
+        )
 
         object_operations[number].computeProperties()
 
         object_operations[number].computeROIs()
 
-        # for img in object_operations[number].rgb_ROIs:
-        #     pass
-            
+        if use_upscale:
 
-        # cv2.imwrite(f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/LR/1.png',object_operations[number].Rgb_ROI)    
-        # upscaler2()
-        # image_upscaled = cv2.imread(f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/results/1_rlt.png')
+            upscaled_images = []
+            for img_roi in object_operations[number].rgb_ROIs:
+                cv2.imwrite(
+                    f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/LR/1.png', img_roi
+                )
+                upscaler2()
+                roi_image_upscaled = cv2.imread(
+                    f'{os.getenv("SAVI_TP2")}/src/lib/ESRGAN_upscaler/results/1_rlt.png'
+                )
+                upscaled_images.append(roi_image_upscaled)
 
-        # cv2.imshow("UPSCALE",image_upscaled)
-        # cv2.imshow("scale",object_operations[number].Rgb_ROI)
-        # cv2.imshow("scale",scene_gui_rgb) 
-        # cv2.waitKey(0)
+            object_operations[number].type = predicter.averageGuess(
+                upscaled_images, plot=plot_NN
+            )
+        else:
+            object_operations[number].type = predicter.averageGuess(
+                object_operations[number].rgb_ROIs, plot=plot_NN
+            )
 
-        # object_operations[number].type = predicter(image_upscaled,plot = True)
-        # print(object_operations[number].type)
-        # print(predicter(object_operations[number].Rgb_ROI,plot = True))
+        # object_operations[number].describe()
+        # object_operations[number].view()
 
-        object_operations[number].describe()
-        object_operations[number].view()
+    # * FINAL DESCRIPTION SHOWCASE HEHEHEHE
 
+    # scene_gui_rgb = cv2.imread(f'{img_path}/00000-color.png')
+    scene_gui_rgb = PointCloudOperations.rgb_images[0]
 
+    # Create a figure and subplots
 
+    plt.figure(1)
+    # Plot the big image in the center with a title
+    plt.imshow(cv2.cvtColor(scene_gui_rgb, cv2.COLOR_BGR2RGB))
+    plt.title(f"Scene nº{scene_n}")
+    plt.axis("off")
+
+    plt.figure(2)
+
+    objects_in_scene = []
+    # Plot the small images on the bottom row
+    for i, _ in enumerate(object_pcds):
+
+        plt.subplot(1, 5, i + 1)
+
+        plt.imshow(cv2.cvtColor(object_operations[i].rgb_ROIs[0], cv2.COLOR_BGR2RGB))
+        objects_in_scene.append(object_operations[i].type)
+        plt.title(f"{objects_in_scene[-1]}")
+        plt.tick_params(
+            left=False, right=False, labelleft=False, labelbottom=False, bottom=False
+        )
+        plt.xlabel(
+            f"""Color is {''.join(filter(str.isalpha,get_colour_name(object_operations[i].average_color)[1]))
+}\n
+Dimensions are \n{object_operations[i].dimensions}"""
+        )
+
+    speech = f"Here we have scene {scene_n}, and it has the following objects:"
+
+    for object_str in objects_in_scene:
+        object_str = "".join(filter(str.isalpha, object_str))
+        speech += f"\n {object_str}"
+
+    text2Speech(speech)
+
+    plt.show()
 
 
 if __name__ == "__main__":
