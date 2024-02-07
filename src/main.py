@@ -294,7 +294,7 @@ def main():
             )
 
         # object_operations[number].describe()
-        # object_operations[number].view()
+        object_operations[number].view()
 
     # * FINAL DESCRIPTION SHOWCASE HEHEHEHE
 

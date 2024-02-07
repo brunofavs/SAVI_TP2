@@ -40,7 +40,7 @@ def main():
     os.chdir(script_dir)
 
     test_filenames = dataset_filenames["test_filenames"]
-    # test_filenames = test_filenames[0:10]
+    test_filenames = test_filenames[0:1000]
 
     print("Used " + str(len(test_filenames)) + " for testing")
 

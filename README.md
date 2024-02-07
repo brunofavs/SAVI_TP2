@@ -76,13 +76,23 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-<div align="center">
+<!-- <div align="center">
 <img  src="docs/tracking.gif" alt="GIF animated" width="400">
 </div>
-<br>
+<br> -->
 
 This assignment was developed for Advanced Systems of Industrial Vision. It was a project to learn point cloud and image manipulation as well as classifier Neural Networks.
 
+<div align="center">
+<img  src="docs/guesses.png" alt="GUI" width="1000">
+</div>
+<br>
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<div align="center">
+<img  src="docs/scene.png" alt="Scene" width="1000">
+</div>
+<br>
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -114,11 +124,12 @@ This project is capable of extracting objects from a Point Cloud of a scene, cla
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is a Python file, so it should be ran in a dedicated terminal running main.py, which is the file that runs the entire program, it can be found under /src directory.
+Before anything, the user should set up a environment variable:
 
 ```
-./main.py
+$SAVI_TP2  --> /path_to_project
 ```
+
 
 
 
@@ -127,6 +138,14 @@ This is a Python file, so it should be ran in a dedicated terminal running main.
 
 To run the program, the following libraries should be installed:
 ```
+opencv
+torch
+torchmetrics
+vlc_python
+gTTs
+open3D
+matplotlib
+numpy
 ```
 
 
@@ -135,55 +154,20 @@ To run the program, the following libraries should be installed:
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-### How it works
+To run the project, execute the following script under `./src`
+
+```
+./main.py
+```
+
+Arguments when running `main.py`:
+- -s -> Choose which scene to render;
+- -pNN -> Enable Neural Network debugging mode.
+- -us -> Use upscale for the NN inputs (takes a lot more time)
+
+<!-- ### How it works -->
 
 
-Run main.py:
-<br>
-<br>
-<div align="center">
-<img  src="docs/entername.png" alt="entername" height="150"><img  src="docs/savename.png" alt="savename" height="150">
-</div>
-<div align="center">Prompt to save your name (click save or hit Enter)</div>
-
-<br>
-<br>
-<div align="center">
-<img  src="docs/detected.png" alt="detected" height="200">
-</div>
-<div align="center">Started recognizing and tracking the face</div>
-
-<br>
-<br>
-<br>
-<br>
-
-<div align="center">
-<img  src="docs/dissapearing.png" alt="dissapearing" height="150"><img  src="docs/dissapeared.png" alt="dissapeared" height="150"><img  src="docs/reappearing.png" alt="reappearing" height="150">
-</div>
-
-<div align="center">Disappearing from one side and appearing on the other </div>
-
-<br>
-<br>
-<br>
-<br>
-<div align="center">
-<img  src="docs/detectedobstruct.png" alt="obstructed" height="150">
-</div>
-<div align="center">Tracking the face even when obstructed</div>
-<br>
-<br>
-
-- Show other faces and repeat.
-
-
-
-<br>
-
-Arguments when running main.py:
-- -c (defines which Haar Cascade it is used for detection);
-- -t (defines which tracking method is going to be used).
 
 
 
