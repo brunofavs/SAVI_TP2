@@ -31,10 +31,10 @@ def main():
     script_dir = os.getcwd()
     os.chdir(f'{os.getenv("SAVI_TP2")}/dataset/jsons')
 
-    with open("rgb_images_filenames.json", "r") as f:
+    with open("rgb_images_filenames_mini.json", "r") as f:
         dataset_filenames = json.load(f)
 
-    with open("rgb_images_matchings.json", "r") as f:
+    with open("rgb_images_matchings_mini.json", "r") as f:
         label_names2idx = json.load(f)
 
     os.chdir(script_dir)
@@ -59,7 +59,7 @@ def main():
     # Modify the last fully connected layer (classifier)
     model.classifier = nn.Linear(model.classifier.in_features, num_classes)
 
-    model_path = f'{os.getenv("SAVI_TP2")}/src/lib/NN/RGB/model_architectures/trained_models/densenet121_full_28ep.pkl'
+    model_path = f'{os.getenv("SAVI_TP2")}/src/lib/NN/RGB/model_architectures/trained_models/densenet121_mini_10_ep.pkl'
     loss = nn.CrossEntropyLoss()
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -86,51 +86,51 @@ def main():
     #-------------------------------------
     # Testing sparse images from folder
     #-------------------------------------
-    bp_imgs_path = f'{os.getenv("SAVI_TP2")}/bin/objs/rgb/cropped/'
+    # bp_imgs_path = f'{os.getenv("SAVI_TP2")}/bin/objs/rgb/cropped/'
 
-    img_bp_filenames = os.listdir(bp_imgs_path)
+    # img_bp_filenames = os.listdir(bp_imgs_path)
 
-    imgs_bp_cropped = []
+    # imgs_bp_cropped = []
 
-    img_transforms = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor()
-        ])
-
-
-    for image_filename in img_bp_filenames:
-
-        img = Image.open(bp_imgs_path + image_filename)
-        tensor_image = img_transforms(img)
-
-        tensor_image = tensor_image.to(device)
-
-        labels_predicted = model.forward(tensor_image.unsqueeze(0))
-
-        # Apply softmax to convert logits into probabilities
-        probabilities = F.softmax(labels_predicted, dim=1)
-
-        # Get the predicted class label (index of the maximum probability)
-        predicted_label_index = torch.argmax(probabilities, dim=1)
-
-        key_list = list(label_names2idx.keys())
-        val_list = list(label_names2idx.values())
-
-        label_idx2names = dict(zip(val_list,key_list))
-
-        predicted_label_name = label_idx2names[predicted_label_index.data.item()]
+    # img_transforms = transforms.Compose([
+    #         transforms.Resize((224, 224)),
+    #         transforms.ToTensor()
+    #     ])
 
 
-        plt.imshow(img)
-        plt.title(predicted_label_name)
-        plt.show()
+    # for image_filename in img_bp_filenames:
+
+    #     img = Image.open(bp_imgs_path + image_filename)
+    #     tensor_image = img_transforms(img)
+
+    #     tensor_image = tensor_image.to(device)
+
+    #     labels_predicted = model.forward(tensor_image.unsqueeze(0))
+
+    #     # Apply softmax to convert logits into probabilities
+    #     probabilities = F.softmax(labels_predicted, dim=1)
+
+    #     # Get the predicted class label (index of the maximum probability)
+    #     predicted_label_index = torch.argmax(probabilities, dim=1)
+
+    #     key_list = list(label_names2idx.keys())
+    #     val_list = list(label_names2idx.values())
+
+    #     label_idx2names = dict(zip(val_list,key_list))
+
+    #     predicted_label_name = label_idx2names[predicted_label_index.data.item()]
 
 
+    #     plt.imshow(img)
+    #     plt.title(predicted_label_name)
+    #     plt.show()
 
 
 
 
-    return
+
+
+    # return
     #-------------------------------------
     # Testing test images from dataset
     #-------------------------------------

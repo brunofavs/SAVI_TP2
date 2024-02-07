@@ -45,9 +45,10 @@ def main():
     #     label_names2idx = None
 
     try:
-        with open('rgb_images_matchings.json', 'r') as f:
+        with open('rgb_images_matchings_mini.json', 'r') as f:
             label_names2idx = json.load(f)
     except:
+        print("Labels not found")
         label_names2idx = None
     
     os.chdir(script_dir)
@@ -81,6 +82,8 @@ def main():
 
     # Modify the last fully connected layer (classifier)
     num_classes = len(label_names2idx)
+    print(num_classes)
+
     model.classifier = nn.Linear(model.classifier.in_features, num_classes)
 
     # model.classifier = nn.Sequential(nn.Linear(model.classifier.in_features, num_classes),nn.Softmax(dim=1))
@@ -100,7 +103,7 @@ def main():
                       validation_loader=validation_loader,
                       learning_rate=hyperparams['lr'],
                       num_epochs=hyperparams['num_epochs'],
-                      model_path=f'{os.getenv("SAVI_TP2")}/src/lib/NN/RGB/model_architectures/trained_models/densenet121_full_30ep.pkl',
+                      model_path=f'{os.getenv("SAVI_TP2")}/src/lib/NN/RGB/model_architectures/trained_models/densenet121_mini_30_ep.pkl',
                       load_model=True)
     trainer.train()
 
