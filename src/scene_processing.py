@@ -63,7 +63,7 @@ def main():
     #* Initialize model wrapper
 
     # predicter = modelWrapper(model_name = "densenet121_full_4ep.pkl")
-    predicter = modelWrapper(model_name = "densenet121_mini_10_ep.pkl",matchings_name="rgb_images_matchings_mini.json")
+    # predicter = modelWrapper(model_name = "densenet121_mini_10_ep.pkl",matchings_name="rgb_images_matchings_mini.json")
 
     # * Initialize image upscaler
 
@@ -219,9 +219,15 @@ def main():
         object_operations[number].savePCD(f"pcd_{number}.pcd", clustered_pcds_path)
 
         # * Compute Axis Aligned BBox's on the camera referential
-        object_operations[number].computePcdBBox()
+        object_operations[number].computeImages(img_paths, n_divs = 10)
 
+        object_operations[number].computePcdBBox()
         object_operations[number].computeRgbBboxs(img_paths, poses, intrinsics_matrix)
+        
+
+        object_operations[number].computePcdCentroid()
+        object_operations[number].computeRGBCentroid(img_paths, poses, intrinsics_matrix)
+
 
         object_operations[number].computeProperties()
 

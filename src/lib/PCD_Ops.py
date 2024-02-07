@@ -359,6 +359,9 @@ class PointCloudOperations:
 
         self.axisAlignedBBox = {"min_bound":min_bound,"max_bound":max_bound}
 
+    def computePcdCentroid(self):
+        self.centroid_pcd = self.gui_pcd.get_center()
+
     def computeRGB_projection(self,point,intrinsics_matrix,extrinsics_matrix = 0):
         # Check if variable is a list
         assert isinstance(point, list), "Variable is not a list"
@@ -376,23 +379,61 @@ class PointCloudOperations:
         rgb_image_point = rgb_image_point.flatten()
     
         return rgb_image_point.astype(int)
-
-    def computeRgbBboxs(self,img_paths, poses,intrinsics_matrix):
-
-        n_divs = 10
-        n_images = len(img_paths)
-
-        PointCloudOperations.rgb_images = []
-
+    
+    def computeImages(self,img_paths,n_divs = 10):
+        self.n_divs = n_divs
         
-        self.RgbBBoxs = []
+        n_images = len(img_paths)
+        PointCloudOperations.rgb_images = []
         for img_path in img_paths[::round(n_images/n_divs)]:
-            
             img = cv2.imread(img_path)
             PointCloudOperations.rgb_images.append(img)
 
+    def computeRGBCentroid(self,img_paths, poses,intrinsics_matrix):
+
+        n_images = len(img_paths)
+        
+        self.RGBCentroids = []
+        for img_path in img_paths[::round(n_images/self.n_divs)]:
             img_numb =  int(img_path[-15:-10])
             pose = poses[img_numb][:]
+
+            # Split line by " "
+            pose = pose.split()
+            # Convert to int
+            pose = [float(i) for i in pose]
+
+            # Pose matrix    
+            WTP          = np.eye(4, dtype = float)
+            WTP[3,3]     = 1
+            WTP[0:3,0:3] = quaternion_to_euler_matrix(pose[0:4])
+            WTP[0:3,3]   = pose[4:7]
+            PTW = np.linalg.inv(WTP)
+
+            centroid_w = self.centroid_pcd
+            # Shape to homogenic coordinate
+            centroid_pcd_p = np.append(centroid_w,1)
+            centroid_pcd_p = centroid_pcd_p.reshape(-1,1)
+
+            # Apply transformation to point
+            centroid_pcd_p = np.dot(PTW,centroid_pcd_p)
+            centroid_pcd_p = np.reshape(centroid_pcd_p, (1,4))
+            centroid_pcd_p = centroid_pcd_p[0][:-1]   
+
+            rgbcentroid = self.computeRGB_projection(list(centroid_pcd_p),intrinsics_matrix)    
+            self.RGBCentroids.append(rgbcentroid)
+
+
+    def computeRgbBboxs(self,img_paths, poses,intrinsics_matrix):
+
+        n_images = len(img_paths)
+        
+        self.RgbBBoxs = []
+        for img_path in img_paths[::round(n_images/self.n_divs)]:
+            
+            img_numb =  int(img_path[-15:-10])
+            pose = poses[img_numb][:]
+            
 
             # Split line by " "
             pose = pose.split()
@@ -433,23 +474,45 @@ class PointCloudOperations:
             
             RgbBBox = {"min_bound":min_bound,"max_bound":max_bound}
             self.RgbBBoxs.append(RgbBBox)
-            
-        print(self.RgbBBoxs)
+            break
    
     def computeROIs(self):
+
+        # Compute weight and height
+        width = self.RgbBBoxs[0]["max_bound"][0] - self.RgbBBoxs[0]["min_bound"][0]
+        height = self.RgbBBoxs[0]["max_bound"][1] - self.RgbBBoxs[0]["min_bound"][1]
+        
+        width  = width  * 1.2
+        height = height * 1.2
+
+        width = max(width, height)
+        height = width
+
+        print("width: " + str(width))
+        print("height: " + str(height))
+
+
 
         self.rgb_ROIs = []
         for idx, img in enumerate(PointCloudOperations.rgb_images):
 
-            cv2.imshow("obj",img) 
-            cv2.waitKey(0)
-            
-            min_bound = self.RgbBBoxs[idx]["min_bound"]
-            max_bound = self.RgbBBoxs[idx]["max_bound"]
+            centroid = self.RGBCentroids[idx]
+            print("Centroid: " + str(centroid))
+            # cv2.circle(img,centroid,20,(255,0,0),2)
 
-            cropped_img  = img[min_bound[1]:max_bound[1], min_bound[0]:max_bound[0]]
+            top_corn = [round((centroid[0]-width/2)),round((centroid[1]-height/2))]
+            bot_corn = [round((centroid[0]+width/2)),round((centroid[1]+height/2))]
+            
+            print("Top corner: " + str(top_corn))
+            print("Bot corner: " + str(bot_corn))
+            cropped_img = img[top_corn[1]:bot_corn[1],top_corn[0]:bot_corn[0]]
             self.rgb_ROIs.append(cropped_img)
 
+            # cv2.imshow("obj",cropped_img) 
+            # cv2.waitKey(0)
+            # self.rgb_ROIs.append(cropped_img)
+
+            
             
 
 
